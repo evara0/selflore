@@ -1,0 +1,41 @@
+# Local project materials
+/docs/
+/.agents/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_ed25519
+
+# Logs, caches, and generated output
+*.log
+*.tmp
+*.cache
+.cache/
+coverage/
+dist/
+build/
+node_modules/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+*.py[cod]
+
+# Local databases and backups
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
