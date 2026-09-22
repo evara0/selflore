@@ -1,0 +1,5 @@
+import { useState } from 'react'
+import './App.css'
+const pages=['Library','Connections','Atlas','Journal']
+const mobile=[['◎','Mine'],['⌘','Connections'],['＋','New'],['◌','Atlas'],['▤','Archive']]
+export default function App(){const [page,setPage]=useState(pages[0]);return <main className="site-shell"><header className="topbar"><a className="brand" href="#top"><span className="mark">✦</span><span><b>LATTICE</b><small>SELFLORE</small></span></a><nav>{pages.map(p=><button className={page===p?'active':''} key={p} onClick={()=>setPage(p)}>{p}</button>)}</nav><span className="status">DEFAULT / 01</span></header><section className="canvas" id="top"><div className="eyebrow">PERSONAL FIELDWORK</div><h1>{page}</h1><p>A quiet framework for fragments, paths, and unfinished ideas.</p><div className="panel"><span>LAYOUT FRAMEWORK</span><div className="ghost">Content intentionally held open.</div></div></section><nav className="mobile-nav">{mobile.map(([icon,label],i)=><button className={label===page?'active':''} key={label} onClick={()=>i!==2&&setPage(pages[i===0?0:i===1?1:i===3?2:3])}><b>{icon}</b><small>{label}</small></button>)}</nav></main>}
