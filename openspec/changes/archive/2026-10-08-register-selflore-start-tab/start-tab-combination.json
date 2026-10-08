@@ -1,0 +1,6 @@
+{
+  "id": "selflore-stack",
+  "name": "SelfLore",
+  "description": "SelfLore 本地开发环境：API 与 Web",
+  "services": ["selflore-api", "selflore-web"]
+}

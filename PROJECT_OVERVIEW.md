@@ -1,33 +1,14 @@
 # SelfLore
 
-## 项目目标
+SelfLore 用四个导航页组织个人知识与思考：知识支持问答、填空与 FSRS 复习；观点支持原子笔记和双向链接；合集支持混合卡片编排和独立翻阅；我的展示个人资料、积累和十二周学习足迹。
 
-SelfLore 是一个正在重建的个人知识与记录空间。当前版本建立了可运行的前后端技术基线与视觉布局框架：后端提供最小健康检查，前端提供带网格背景、玻璃主内容区和响应式底部导航的导航壳层。业务数据、认证、数据库和正式内容将在后续独立变更中实现。
-
-## 技术栈
-
-| 区域 | 技术 |
+| 区域 | 当前实现 |
 | --- | --- |
-| 后端 | Python 3.13、FastAPI、Uvicorn、uv、pytest |
-| 前端 | React、TypeScript、Vite、pnpm、CSS |
-| API 本地端口 | `24566`，`GET /api/health` |
-| Web 本地端口 | `24567` |
-| 规格与流程 | OpenSpec、Git |
+| 后端 | Python 3.13、FastAPI、Uvicorn、psycopg、FSRS；uv 锁文件 |
+| 前端 | React、TypeScript、Vite、React Router、TanStack Query、安全 Markdown；pnpm 锁文件 |
+| 数据库 | PostgreSQL 18，身份基线加13张内容、组织、资料及学习表，SQL增量迁移 |
+| 本地端口 | API 24566、Vite 24567、开发数据库6171 |
+| 隔离验证 | 一次性数据库6179、浏览器API24568；不得复用业务库 |
+| 规格 | 已完成能力见 `openspec/specs/`，历史变更见主项目归档；本机部署OpenSpec独立管理 |
 
-## 本地启动
-
-```powershell
-cd apps/api
-uv sync --frozen
-uv run uvicorn app.main:app --host 127.0.0.1 --port 24566
-```
-
-```powershell
-cd apps/web
-pnpm install --frozen-lockfile
-pnpm dev
-```
-
-## 当前边界
-
-当前项目不包含数据库、账号认证、业务 API、数据迁移或正式知识内容。
+启动、配置、更新与排障见 [MAINTENANCE.md](MAINTENANCE.md)。卡片迁移增加0002与0003，不清空已有数据；现有开发库需要 migrator 凭据才可执行。本次未发布生产。

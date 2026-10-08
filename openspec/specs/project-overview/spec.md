@@ -1,0 +1,15 @@
+# project-overview Specification
+
+## Purpose
+
+让协作者能够通过受版本控制的项目说明理解 SelfLore 的知识与思考目标、当前技术栈、本地服务端口及已实现范围，并找到启动与维护入口，避免把早期设想或示例数据当作当前交付行为。
+
+## Requirements
+
+### Requirement: 项目概览
+
+项目 SHALL 提供受版本控制的说明文档，列出目标、技术栈、端口与当前范围边界。
+
+#### Scenario: 阅读仓库
+- **WHEN** 用户查看项目根目录
+- **THEN** 用户 SHALL 能找到项目概览文档

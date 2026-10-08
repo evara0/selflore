@@ -2,6 +2,13 @@
 /docs/
 /.agents/
 
+# Local deployment material
+/local-deployment/
+/deploy/
+/DEPLOYMENT_*.md
+/apps/api/AUTH_MIGRATIONS.md
+/apps/api/DB_BOOTSTRAP.md
+
 # Environment files and secrets
 .env
 .env.*
@@ -20,6 +27,7 @@ id_ed25519
 *.tmp
 *.cache
 .cache/
+.pnpm-store/
 coverage/
 dist/
 build/

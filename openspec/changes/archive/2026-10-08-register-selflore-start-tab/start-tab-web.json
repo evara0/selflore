@@ -1,0 +1,16 @@
+{
+  "id": "selflore-web",
+  "name": "SelfLore Web",
+  "group": "SelfLore",
+  "icon": "WEB",
+  "kind": "command",
+  "executable": "D:\\nodejs\\pnpm.CMD",
+  "workingDirectory": "G:\\selflore\\apps\\web",
+  "args": ["run", "dev", "--host", "127.0.0.1", "--port", "24567", "--strictPort"],
+  "processNames": ["node.exe"],
+  "ports": [24567],
+  "matchByPort": true,
+  "openUrl": "http://127.0.0.1:24567",
+  "dependencies": ["selflore-api"],
+  "startTimeoutMs": 30000
+}
