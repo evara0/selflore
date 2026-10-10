@@ -26,7 +26,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 test('guest cards hide answers, filter locally and gate bookmark without any write request', async () => {
   guestFetch(); render(<App/>)
   expect(await screen.findByText('演示空间 · 只读')).toBeTruthy()
-  await screen.findByRole('link', { name: '主动回忆为什么有效？' })
+  // The first lazy route import can exceed the default one-second wait on Windows.
+  await screen.findByRole('link', { name: '主动回忆为什么有效？' }, { timeout: 5000 })
   expect(screen.queryByText(/主动回忆是先不看材料/)).toBeNull()
   fireEvent.change(screen.getByLabelText('搜索知识'), { target: { value: '主动回忆为什么' } })
   await waitFor(() => expect(screen.getAllByRole('button', { name: /查看答案/ })).toHaveLength(1))

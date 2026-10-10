@@ -1,0 +1,76 @@
+import { test, expect } from '@playwright/test'
+import { mkdir } from 'node:fs/promises'
+import { registrationRules } from '../src/lib/registration'
+
+const shots = '../../docs/design/registration-feedback-v2'
+
+for (const [width, height] of [[1280, 800], [390, 844], [320, 568], [390, 400]]) {
+  test(`registration feedback and keyboard flow at ${width}x${height}`, async ({ page }) => {
+    let registrations = 0
+    await page.route('**/api/**', async route => {
+      const path = new URL(route.request().url()).pathname
+      if (path === '/api/auth/me') await route.fulfill({ status: 401, json: { detail: '请先登录' } })
+      else if (path === '/api/auth/config') await route.fulfill({ json: { registration_enabled: true } })
+      else if (path === '/api/auth/register') {
+        registrations++
+        expect(route.request().postDataJSON()).toEqual({ username: '123中文', password: 'a'.repeat(8) })
+        await route.fulfill({ status: 201, json: { id: 'test-member', username: 'alice', role: 'member', is_active: true } })
+      } else throw new Error(`Unexpected API request: ${path}`)
+    })
+    await page.setViewportSize({ width, height })
+    await page.goto('/knowledge')
+    await page.getByRole('button', { name: '登录', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('tab', { name: '注册' }).click()
+    const username = dialog.getByLabel('用户名', { exact: true })
+    const password = dialog.getByLabel('密码', { exact: true })
+    const confirmation = dialog.getByLabel('确认密码', { exact: true })
+    const submit = dialog.getByRole('button', { name: '注册', exact: true })
+    for (const rule of Object.values(registrationRules).filter(Boolean)) await expect(dialog.getByText(rule, { exact: true })).toHaveCount(1)
+    await expect(dialog.locator('.auth-error')).toHaveCount(0)
+    await expect(submit).toBeDisabled()
+    await expect(dialog.locator('.auth-rule')).toHaveCount(2)
+    await expect(dialog.locator('.auth-summary')).toHaveCount(0)
+    await username.press('Enter')
+    expect(registrations).toBe(0)
+    await username.fill('a@b')
+    await password.fill('short')
+    await confirmation.fill('different')
+    await confirmation.press('Tab')
+    await expect(dialog.locator('.auth-error')).toHaveCount(3)
+    await expect(username).toHaveAttribute('aria-invalid', 'true')
+    await expect(confirmation).toHaveAttribute('aria-describedby', 'register-confirmation-feedback')
+    await confirmation.press('Enter')
+    expect(registrations).toBe(0)
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const dialogBounds = await dialog.boundingBox()
+    expect(dialogBounds!.y).toBeGreaterThanOrEqual(0)
+    expect(dialogBounds!.y + dialogBounds!.height).toBeLessThanOrEqual(height)
+    await submit.scrollIntoViewIfNeeded()
+    await expect(submit).toBeInViewport()
+    await dialog.getByRole('button', { name: '关闭登录窗口' }).scrollIntoViewIfNeeded()
+    await expect(dialog.getByRole('button', { name: '关闭登录窗口' })).toBeInViewport()
+    await mkdir(shots, { recursive: true })
+    await page.screenshot({ path: `${shots}/${width}x${height}-errors.png` })
+    await username.fill('123中文')
+    await password.fill('a'.repeat(8))
+    await confirmation.fill('a'.repeat(8))
+    await expect(dialog.locator('.auth-error')).toHaveCount(0)
+    await expect(submit).toBeEnabled()
+    await expect(dialog.locator('.auth-summary')).toHaveCount(0)
+    await submit.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${shots}/${width}x${height}-valid.png` })
+    await confirmation.press('Enter')
+    await expect(dialog.getByRole('status')).toHaveText('注册成功，请登录。')
+    expect(registrations).toBe(1)
+    await expect(dialog.getByRole('tab', { name: '登录' })).toHaveAttribute('aria-selected', 'true')
+    await page.keyboard.press('Escape')
+    await expect(dialog).not.toBeVisible()
+    await page.getByRole('button', { name: '登录', exact: true }).click()
+    await dialog.getByRole('tab', { name: '注册' }).click()
+    await expect(dialog.locator('.auth-error')).toHaveCount(0)
+    await dialog.getByRole('button', { name: '关闭登录窗口' }).click()
+    await expect(dialog).not.toBeVisible()
+  })
+}

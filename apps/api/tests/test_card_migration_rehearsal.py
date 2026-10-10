@@ -44,7 +44,7 @@ def test_empty_and_existing_baselines_concurrency_and_grant_rollback(tmp_path,mo
     monkeypatch.setenv('SELFLORE_APP_PASSWORD',str(uuid4()))
     bootstrap(Target('prod','127.0.0.1',6179,'postgres'))
     reset_disposable_prod()
-    assert migrate('prod','127.0.0.1',6179)==['0001_identity','0002_card_workspace','0003_knowledge_review']
+    assert migrate('prod','127.0.0.1',6179)==[file.stem for file in sorted(MIGRATIONS_DIR.glob('*.sql'))]
     empty=signature(DSN,'prod')
     assert empty==signature(os.environ['SELFLORE_TEST_MIGRATOR_DSN'],'dev')
     assert migrate('prod','127.0.0.1',6179)==[]
@@ -61,7 +61,7 @@ def test_empty_and_existing_baselines_concurrency_and_grant_rollback(tmp_path,mo
         sessions=db.execute('SELECT * FROM app.auth_sessions ORDER BY id').fetchall()
     with ThreadPoolExecutor(max_workers=2) as pool:
         completed=list(pool.map(lambda _:migrate('prod','127.0.0.1',6179),range(2)))
-    assert sorted(map(len,completed))==[0,2]
+    assert sorted(map(len,completed))==[0,len(list(MIGRATIONS_DIR.glob('*.sql')))-1]
     assert signature(DSN,'prod')==empty
     with psycopg.connect(DSN) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')
@@ -71,12 +71,12 @@ def test_empty_and_existing_baselines_concurrency_and_grant_rollback(tmp_path,mo
         assert db.execute('SELECT count(*) FROM app.cards').fetchone()==(0,)
     fault=tmp_path/'grant-failure'; fault.mkdir()
     for file in MIGRATIONS_DIR.glob('*.sql'): (fault/file.name).write_bytes(file.read_bytes())
-    (fault/'0004_grant_failure.sql').write_text('CREATE TABLE app.must_rollback(id int);',encoding='utf-8')
-    monkeypatch.setitem(GRANTS,'0004_grant_failure',{'missing_table':'SELECT'})
+    (fault/'0005_grant_failure.sql').write_text('CREATE TABLE app.must_rollback(id int);',encoding='utf-8')
+    monkeypatch.setitem(GRANTS,'0005_grant_failure',{'missing_table':'SELECT'})
     with pytest.raises(psycopg.errors.UndefinedTable): migrate('prod','127.0.0.1',6179,fault)
     with psycopg.connect(DSN) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert db.execute("SELECT to_regclass('app.must_rollback')").fetchone()==(None,)
-        assert db.execute("SELECT count(*) FROM app.schema_migrations WHERE version='0004_grant_failure'").fetchone()==(0,)
+        assert db.execute("SELECT count(*) FROM app.schema_migrations WHERE version='0005_grant_failure'").fetchone()==(0,)
     (fault/'0002_card_workspace.sql').write_bytes((MIGRATIONS_DIR/'0002_card_workspace.sql').read_bytes()+b'\n-- changed')
     with pytest.raises(MigrationError,match='改动'): migrate('prod','127.0.0.1',6179,fault)

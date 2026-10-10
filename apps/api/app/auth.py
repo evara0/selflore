@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 hasher = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 _DUMMY_HASH = hasher.hash("not-a-real-account-password")
-_USERNAME = re.compile(r"^[a-z][a-z0-9_-]{2,31}$")
+_USERNAME = re.compile(r"^[a-z0-9_\-\u4e00-\u9fff]{3,32}$")
 _SESSION_LENGTH = timedelta(hours=24)
 _THROTTLE_WINDOW = timedelta(minutes=15)
 _THROTTLE_LIMIT = 5
@@ -80,13 +80,14 @@ def _now() -> datetime:
 def normalize_username(value: str) -> str:
     normalized = value.lower()
     if not _USERNAME.fullmatch(normalized):
-        raise HTTPException(422, "用户名须为 3–32 位字母、数字、下划线或连字符，且以字母开头")
+        message = "用户名需为 3–32 位" if not 3 <= len(normalized) <= 32 else "请用中文、字母、数字、下划线或连字符"
+        raise HTTPException(422, message)
     return normalized
 
 
 def validate_password(value: str) -> None:
-    if not 12 <= len(value) <= 128:
-        raise HTTPException(422, "密码长度须为 12–128 个字符")
+    if not 8 <= len(value) <= 128:
+        raise HTTPException(422, "密码至少 8 位" if len(value) < 8 else "密码最多 128 位")
 
 
 def _verify_password(stored: str, supplied: str) -> bool:

@@ -212,7 +212,7 @@ def test_migration_history_rollback_and_app_privileges(tmp_path: Path):
     (tmp_path / first.name).write_bytes(first.read_bytes())
     for migration in MIGRATIONS_DIR.glob('*.sql'):
         (tmp_path / migration.name).write_bytes(migration.read_bytes())
-    (tmp_path / "0004_fail.sql").write_text("CREATE TABLE app.should_rollback (id integer); SELECT 1/0;", encoding="utf-8")
+    (tmp_path / "0005_fail.sql").write_text("CREATE TABLE app.should_rollback (id integer); SELECT 1/0;", encoding="utf-8")
     with pytest.raises(psycopg.Error):
         migrate("dev", "127.0.0.1", 6179, tmp_path)
     with psycopg.connect(os.environ["SELFLORE_TEST_MIGRATOR_DSN"]) as connection:
@@ -220,7 +220,7 @@ def test_migration_history_rollback_and_app_privileges(tmp_path: Path):
             cursor.execute("SET LOCAL ROLE selflore_dev_owner")
             cursor.execute("SELECT to_regclass('app.should_rollback')")
             assert cursor.fetchone()[0] is None
-            cursor.execute("SELECT count(*) FROM app.schema_migrations WHERE version = '0004_fail'")
+            cursor.execute("SELECT count(*) FROM app.schema_migrations WHERE version = '0005_fail'")
             assert cursor.fetchone()[0] == 0
     with psycopg.connect(os.environ["SELFLORE_TEST_APP_DSN"]) as connection:
         with connection.cursor() as cursor:
