@@ -45,3 +45,11 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 今日完成数为本人时区内不同复习单元；积累数为内容卡片。已掌握要求至少一个活跃单元、每个活跃单元均 review 且下次间隔≥21天。学习足迹只计新建、内容更新、复习；收藏、组织、合集操作仅进入最近活动。
 
 完整字段约束可见运行服务的 `/docs` 与 `app/schemas/workspace.py`。表结构和迁移见 [CARD_MIGRATIONS.md](CARD_MIGRATIONS.md)。
+
+## 资料卡与附件
+
+`kind=reference`，`form=null`，`body_md`为原始摘录，`note_md`为个人说明；原始摘录或至少一个ready附件必需。来源扩展为source_author、source_publisher、source_platform、source_published_on。`attachments`为包含id、caption、alt_text、creator_name的有序数组，每卡最多10图；PATCH用expected_revision整组原子替换。
+
+`GET /api/cards?kinds=knowledge,reference`多类型过滤，与kind互斥。单独kind=knowledge保持旧语义。摘要新增references，合集新增reference_count，活动筛选支持reference。
+
+`GET /api/attachments/config`提供可用状态和实际限制；`POST /api/attachments`使用multipart（file、client_request_id、file_sha256），带现有Cookie／Origin／CSRF。`GET /api/attachments/{id}`及`/content?variant=original|thumbnail`仅本人可读，非本人及未知ID一致404，未登录401。图片private no-store、nosniff，不公开静态媒体目录。图片上传不写学习事件。

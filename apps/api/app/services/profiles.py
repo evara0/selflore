@@ -48,6 +48,7 @@ def summary(db,owner,now=None):
     while day in dates:
         streak+=1; day-=timedelta(days=1)
     totals=one(db,"SELECT count(*) FILTER(WHERE kind='knowledge') AS knowledge,count(*) FILTER(WHERE kind='opinion') AS opinions FROM app.cards WHERE owner_id=%s AND lifecycle<>'trashed'",(owner,))
+    totals['references']=one(db,"SELECT count(*) AS n FROM app.cards WHERE owner_id=%s AND kind='reference' AND lifecycle<>'trashed'",(owner,))['n']
     totals['collections']=one(db,"SELECT count(*) AS n FROM app.collections WHERE owner_id=%s AND lifecycle='active'",(owner,))['n']
     totals['streak']=streak
     return totals
@@ -63,7 +64,7 @@ def heatmap(db,owner,now=None):
 
 def activity(db,owner,kind=None,limit=24,offset=0):
     where=' WHERE a.owner_id=%s'; values=[owner]
-    if kind in ('knowledge','opinion'):
+    if kind in ('knowledge','opinion','reference'):
         where+=' AND c.kind=%s'; values.append(kind)
     elif kind=='collection':
         where+=' AND a.collection_id IS NOT NULL'

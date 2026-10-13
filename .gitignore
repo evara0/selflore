@@ -42,6 +42,7 @@ __pycache__/
 *.py[cod]
 
 # Local databases and backups
+/backups/
 *.db
 *.sqlite
 *.sqlite3

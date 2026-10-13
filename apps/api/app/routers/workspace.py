@@ -27,11 +27,14 @@ Offset=Annotated[int,Query(ge=0)]
 
 
 @router.get('/cards')
-def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion']|None=None,q:Annotated[str|None,Query(max_length=200)]=None,
+def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference']|None=None,kinds:Annotated[str|None,Query(max_length=80)]=None,q:Annotated[str|None,Query(max_length=200)]=None,
     topic_id:UUID|None=None,tag_id:UUID|None=None,lifecycle:Literal['active','archived','trashed']='active',
     processing_state:Literal['inbox','organized']|None=None,is_bookmarked:bool|None=None,
     sort:Literal['updated_desc','created_desc','code_asc','connections_desc']='updated_desc',limit:Limit=24,offset:Offset=0):
-    return cards.list_cards(db,owner,kind=kind,q=q,topic_id=topic_id,tag_id=tag_id,lifecycle=lifecycle,
+    selected = kinds.split(',') if kinds else None
+    if selected and (kind or len(selected)!=len(set(selected)) or any(k not in ('knowledge','opinion','reference') for k in selected)):
+        fail(422,'invalid_kinds','请选择单一类型或有效类型集合')
+    return cards.list_cards(db,owner,kind=kind,kinds=selected,q=q,topic_id=topic_id,tag_id=tag_id,lifecycle=lifecycle,
         processing_state=processing_state,is_bookmarked=is_bookmarked,sort=sort,limit=limit,offset=offset)
 
 
@@ -43,7 +46,7 @@ def card_create(body:CardCreate,db:Db,owner:Owner):
 @router.get('/cards/summary')
 def card_summary(db:Db,owner:Owner):
     return one(db,"""SELECT count(*) FILTER(WHERE kind='knowledge') AS knowledge,count(*) FILTER(WHERE kind='opinion') AS opinions,
-      count(*) FILTER(WHERE processing_state='inbox') AS inbox,count(*) FILTER(WHERE is_bookmarked) AS bookmarked
+      count(*) FILTER(WHERE kind='reference') AS references,count(*) FILTER(WHERE processing_state='inbox') AS inbox,count(*) FILTER(WHERE is_bookmarked) AS bookmarked
       FROM app.cards WHERE owner_id=%s AND lifecycle='active'""",(owner,))
 
 
@@ -107,7 +110,7 @@ def taxonomy_delete(db,owner,table,entity):
 
 
 @router.get('/topics')
-def topics(db:Db,owner:Owner,kind:Literal['knowledge','opinion']|None=None): return taxonomy_list(db,owner,'topics',kind)
+def topics(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference']|None=None): return taxonomy_list(db,owner,'topics',kind)
 
 
 @router.post('/topics',status_code=201)
@@ -204,7 +207,7 @@ def me_summary(db:Db,owner:Owner): return profiles.summary(db,owner)
 
 
 @router.get('/me/activity')
-def me_activity(db:Db,owner:Owner,kind:Literal['knowledge','opinion','collection']|None=None,limit:Limit=24,offset:Offset=0): return profiles.activity(db,owner,kind,limit,offset)
+def me_activity(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','collection']|None=None,limit:Limit=24,offset:Offset=0): return profiles.activity(db,owner,kind,limit,offset)
 
 
 @router.get('/me/heatmap')

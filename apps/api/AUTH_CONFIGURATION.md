@@ -17,6 +17,8 @@
 
 ## 2. 开发运行示例
 
+本机SelfLore已有固定入口，推荐按[本地固定启动](../../LOCAL_START.md)一次配置app密码，再从项目根执行`start-local.cmd`；该入口通过uv --env-file显式加载`apps/api/.env`，普通uvicorn启动不会自动读取.env。日常应用与迁移凭据独立保存，启动不运行迁移。下面保留其他开发环境的手动命令。
+
 示例端口5432应替换为目标数据库端口；先在本机配置app角色的libpq密码文件，然后在PowerShell执行：
 
 ```powershell

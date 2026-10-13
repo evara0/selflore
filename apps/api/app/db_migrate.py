@@ -10,6 +10,10 @@ from psycopg import sql
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 MIGRATION_LOCK = 436177100223001
 GRANTS = {
+    "0005_reference_media": {
+        "attachments": "SELECT, INSERT, UPDATE",
+        "card_attachments": "SELECT, INSERT, UPDATE, DELETE",
+    },
     "0001_identity": {
         "users": "SELECT, INSERT, UPDATE", "auth_sessions": "SELECT, INSERT, UPDATE",
         "auth_login_throttle": "SELECT, INSERT, UPDATE, DELETE", "account_audit": "INSERT",

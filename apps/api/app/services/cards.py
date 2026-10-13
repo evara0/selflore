@@ -14,7 +14,7 @@ from app.schemas.workspace import CardContent
 from app.services.content import references, cloze_indices
 from app.services.scheduling import fresh, VERSION
 
-FIELDS = ('kind','form','title','question_md','answer_md','body_md','source_title','source_url','source_locator','processing_state','is_bookmarked')
+FIELDS = ('kind','form','title','question_md','answer_md','body_md','note_md','source_title','source_url','source_locator','source_author','source_publisher','source_platform','source_published_on','processing_state','is_bookmarked')
 SELECT = """SELECT c.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
       FROM app.card_tags ct JOIN app.tags t ON t.owner_id=ct.owner_id AND t.id=ct.tag_id
@@ -37,7 +37,7 @@ def event(db, owner, kind, row, *, collection=False, now=None):
 
 
 def search_text(row, code):
-    return '\n'.join(str(row.get(key) or '') for key in ('title','question_md','answer_md','body_md','source_title','source_locator')) + '\n' + code
+    return '\n'.join(str(row.get(key) or '') for key in ('title','question_md','answer_md','body_md','note_md','source_title','source_locator','source_author','source_publisher','source_platform')) + '\n' + code
 
 
 def public(row, *, summary=False):
@@ -46,7 +46,7 @@ def public(row, *, summary=False):
         result.pop(key, None)
     result['topic_ids'] = [t['id'] for t in result.get('topics',[])]
     result['tag_ids'] = [t['id'] for t in result.get('tags',[])]
-    text = result.get('body_md') or result.get('question_md') or ''
+    text = result.get('body_md') or result.get('note_md') or result.get('question_md') or ''
     if result['kind']=='knowledge' and result['form']=='cloze':
         from app.services.content import cloze_text
         text=cloze_text(text,None,False)
@@ -55,6 +55,7 @@ def public(row, *, summary=False):
     if summary:
         result.pop('answer_md',None)
         result.pop('body_md',None)
+        result.pop('note_md',None)
     return result
 
 
@@ -62,11 +63,22 @@ def detail(db, owner, card_id):
     row = one(db, SELECT+' WHERE c.owner_id=%s AND c.id=%s', (owner,card_id))
     if row is None:
         fail(404,'not_found','对象不存在或不可用')
-    return public(row)
+    result = public(row)
+    result['attachments'] = attachment_links(db, owner, card_id)
+    return result
 
 
-def list_cards(db, owner, *, kind=None, q=None, topic_id=None, tag_id=None, lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
+def attachment_links(db, owner, card_id):
+    return many(db, '''SELECT a.id,a.mime_type,a.width,a.height,a.original_bytes,a.thumbnail_bytes,
+        ca.caption,ca.alt_text,ca.creator_name FROM app.card_attachments ca JOIN app.attachments a
+        ON a.owner_id=ca.owner_id AND a.id=ca.attachment_id
+        WHERE ca.owner_id=%s AND ca.card_id=%s ORDER BY ca.position''', (owner,card_id))
+
+
+def list_cards(db, owner, *, kind=None, kinds=None, q=None, topic_id=None, tag_id=None, lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
     conditions, values = ['c.owner_id=%s','c.lifecycle=%s'], [owner,lifecycle]
+    if kinds:
+        conditions.append('c.kind=ANY(%s::text[])'); values.append(kinds)
     for key,value in (('kind',kind),('processing_state',processing_state),('is_bookmarked',is_bookmarked)):
         if value is not None:
             conditions.append(f'c.{key}=%s'); values.append(value)
@@ -87,10 +99,24 @@ def list_cards(db, owner, *, kind=None, q=None, topic_id=None, tag_id=None, life
         query='SELECT * FROM ('+query+') c'
     total=one(db,'SELECT count(*) AS n FROM app.cards c'+where,values)['n']
     rows=many(db,query+' ORDER BY '+order+' LIMIT %s OFFSET %s',(*values,limit,offset))
-    return {'items':[public(row,summary=True) for row in rows],'total':total,'limit':limit,'offset':offset}
+    items = []
+    for row in rows:
+        item = public(row,summary=True)
+        item['attachments'] = attachment_links(db,owner,row['id'])[:1] if row['kind']=='reference' else []
+        items.append(item)
+    return {'items':items,'total':total,'limit':limit,'offset':offset}
 
 
 def relations(db, owner, card_id, data):
+    if len(data.attachments)>10:
+        fail(422,'too_many_images','每卡最多10张图片')
+    ids = [item.id for item in data.attachments]
+    if ids and len(many(db,"SELECT id FROM app.attachments WHERE owner_id=%s AND id=ANY(%s::uuid[]) AND status='ready'",(owner,ids))) != len(ids):
+        fail(404,'not_found','图片不存在、未完成或不可用')
+    run(db,'DELETE FROM app.card_attachments WHERE owner_id=%s AND card_id=%s',(owner,card_id))
+    for position,item in enumerate(data.attachments):
+        run(db,'''INSERT INTO app.card_attachments(owner_id,card_id,attachment_id,position,caption,alt_text,creator_name)
+                VALUES(%s,%s,%s,%s,%s,%s,%s)''',(owner,card_id,item.id,position,item.caption,item.alt_text,item.creator_name))
     for ids,table in ((data.topic_ids,'topics'),(data.tag_ids,'tags')):
         if ids:
             extra=' AND kind=%s' if table=='topics' else ''
@@ -106,7 +132,7 @@ def relations(db, owner, card_id, data):
             else:
                 run(db,'INSERT INTO app.card_tags(owner_id,card_id,tag_id) VALUES(%s,%s,%s)',(owner,card_id,entity_id))
     try:
-        targets=references('\n'.join(value or '' for value in (data.body_md,data.question_md,data.answer_md)))
+        targets=references('\n'.join(value or '' for value in (data.body_md,data.note_md,data.question_md,data.answer_md)))
     except ValueError as error:
         fail(422,'invalid_reference',str(error))
     if card_id in targets:
@@ -142,9 +168,15 @@ def sync_units(db,owner,card_id,data):
 
 def create_card(db,owner,data):
     values=data.model_dump(); fingerprint=digest(data.model_dump(mode='json'))
+    compatible={fingerprint}
+    # Existing creation digests must remain unchanged across the additive schema upgrade.
+    extensions=('note_md','attachments','source_author','source_publisher','source_platform','source_published_on')
+    if data.kind in ('knowledge','opinion') and all(values[key] in (None,'',[]) for key in extensions):
+        legacy={key:value for key,value in data.model_dump(mode='json').items() if key not in extensions}
+        compatible.add(digest(legacy))
     old=one(db,'SELECT id,creation_request_digest FROM app.cards WHERE owner_id=%s AND client_request_id=%s',(owner,data.client_request_id))
     if old:
-        if old['creation_request_digest']!=fingerprint: fail(409,'request_conflict','请求标识已用于不同内容')
+        if old['creation_request_digest'] not in compatible: fail(409,'request_conflict','请求标识已用于不同内容')
         return detail(db,owner,old['id'])
     entity_id=uuid4(); code=datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+entity_id.hex.upper()
     try:
@@ -156,7 +188,7 @@ def create_card(db,owner,data):
             event(db,owner,'card_created',{'id':entity_id,'title':data.title})
     except psycopg.errors.UniqueViolation:
         old=one(db,'SELECT id,creation_request_digest FROM app.cards WHERE owner_id=%s AND client_request_id=%s',(owner,data.client_request_id))
-        if not old or old['creation_request_digest']!=fingerprint: fail(409,'request_conflict','创建请求冲突，请重试')
+        if not old or old['creation_request_digest'] not in compatible: fail(409,'request_conflict','创建请求冲突，请重试')
         entity_id=old['id']
     return detail(db,owner,entity_id)
 
@@ -166,6 +198,7 @@ def edit_card(db,owner,card_id,patch):
         row=owned(db,'cards',owner,card_id,lock=True); revision(row,patch.expected_revision)
         before=detail(db,owner,card_id)
         payload={key:before[key] for key in CardContent.model_fields if key in before}
+        payload['attachments']=[{key:item.get(key) for key in ('id','caption','alt_text','creator_name')} for item in before['attachments']]
         original=CardContent.model_validate(payload).model_dump(mode='json')
         payload.update(patch.model_dump(exclude_unset=True,exclude={'expected_revision'}))
         try:
@@ -178,7 +211,7 @@ def edit_card(db,owner,card_id,patch):
         run(db,'UPDATE app.cards SET '+','.join(key+'=%s' for key in FIELDS)+',search_text=%s,revision=revision+1,updated_at=now() WHERE owner_id=%s AND id=%s',
             (*(values[key] for key in FIELDS),search_text(values,row['code']),owner,card_id))
         relations(db,owner,card_id,data); sync_units(db,owner,card_id,data)
-        content_changed=any(before.get(k)!=values.get(k) for k in ('body_md','question_md','answer_md'))
+        content_changed=any(before.get(k)!=values.get(k) for k in ('body_md','note_md','question_md','answer_md')) or original['attachments']!=data.model_dump(mode='json')['attachments']
         event(db,owner,'card_updated' if content_changed else 'card_organized',{'id':card_id,'title':data.title})
     return detail(db,owner,card_id)
 

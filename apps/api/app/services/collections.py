@@ -16,6 +16,8 @@ SELECT="""SELECT c.*,
   WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='knowledge') AS knowledge_count,
  (SELECT count(*) FROM app.collection_items i JOIN app.cards x ON x.owner_id=i.owner_id AND x.id=i.card_id
   WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='opinion') AS opinion_count
+ ,(SELECT count(*) FROM app.collection_items i JOIN app.cards x ON x.owner_id=i.owner_id AND x.id=i.card_id
+  WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='reference') AS reference_count
  FROM app.collections c"""
 
 
@@ -96,6 +98,12 @@ def items(db,owner,entity):
       CASE WHEN c.lifecycle='active' AND %s='active' THEN c.body_md END AS body_md
       FROM app.collection_items i JOIN app.cards c ON c.owner_id=i.owner_id AND c.id=i.card_id
       WHERE i.owner_id=%s AND i.collection_id=%s ORDER BY i.position""",(parent['lifecycle'],)*3+(owner,entity))
+    from app.services.cards import detail as card_detail
+    for row in rows:
+        if row['lifecycle']=='active' and parent['lifecycle']=='active':
+            item_id, position = row['item_id'], row['position']
+            row.update(card_detail(db,owner,row['id']))
+            row.update(item_id=item_id,position=position)
     return {'items':rows,'revision':parent['revision']}
 
 

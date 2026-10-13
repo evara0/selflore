@@ -1,0 +1,83 @@
+import { test, expect } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
+
+test('image reference capture, original, editing, collection, reload and logout', async ({ page, request }, testInfo) => {
+  test.setTimeout(90000)
+  if (process.env.SELFLORE_TEST_ISOLATED !== '1') throw new Error('Disposable test service only')
+  const base = 'http://127.0.0.1:24568', username = 'media_' + randomUUID().slice(0, 8), password = 'media-browser-password-123'
+  expect((await request.post(base + '/api/auth/register', { data: { username, password }, headers: { Origin: base } })).status()).toBe(201)
+  await page.goto('/knowledge')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await page.getByLabel('用户名', { exact: true }).fill(username); await page.getByLabel('密码', { exact: true }).fill(password)
+  await page.getByRole('dialog').getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('button', { name: username })).toBeVisible()
+  await page.goto('/new?kind=reference')
+  await page.getByLabel('标题', { exact: true }).fill('图片资料闭环')
+  await page.getByLabel('我的说明', { exact: true }).fill('收录图表，供之后引用。')
+  await page.getByLabel('来源作者', { exact: true }).fill('示例来源作者')
+  await page.getByLabel('来源链接', { exact: true }).fill('https://example.com/source')
+  // Generate a synthetic long image in this run; no historical cache is needed.
+  const png = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 640; canvas.height = 1280
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#f2eadf'; context.fillRect(0, 0, 640, 1280)
+    context.fillStyle = '#385d72'; context.fillRect(40, 80, 560, 300)
+    context.fillStyle = '#bf7853'; context.fillRect(40, 480, 560, 680)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  const buffer = Buffer.from(png, 'base64')
+  await page.getByLabel('上传图片').setInputFiles({ name: 'sample.png', mimeType: 'image/png', buffer })
+  await expect(page.getByLabel('图注 1')).toBeVisible()
+  await page.getByLabel('图注 1').fill('原始图表')
+  await page.getByLabel('替代文本 1').fill('示例长图')
+  await page.getByLabel('图片作者 1').fill('示例图片作者')
+  const clipboardBytes = [...buffer]
+  // Exercise DOM clipboard and drag paths without changing the user's OS clipboard.
+  await page.getByLabel('我的说明', { exact: true }).evaluate((element, bytes) => {
+    const transfer = new DataTransfer(); transfer.items.add(new File([new Uint8Array(bytes)], 'paste.png', { type: 'image/png' }))
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }))
+  }, clipboardBytes)
+  await expect(page.getByLabel('图注 2')).toBeVisible()
+  await page.getByLabel('图注 2').fill('粘贴图')
+  await expect(page.getByLabel('我的说明', { exact: true })).toHaveValue('收录图表，供之后引用。')
+  await page.locator('.image-uploader').evaluate((element, bytes) => {
+    const transfer = new DataTransfer(); transfer.items.add(new File([new Uint8Array(bytes)], 'drag.png', { type: 'image/png' }))
+    element.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }))
+  }, clipboardBytes)
+  await expect(page.getByLabel('图注 3')).toBeVisible()
+  await page.getByLabel('图注 3').fill('拖入图')
+  await page.getByRole('button', { name: '保存卡片', exact: true }).click()
+  await expect(page).toHaveURL(/knowledge\/references\//)
+  const url = page.url(), id = url.split('/').pop()!
+  await expect(page.getByRole('heading', { name: '原始材料' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '我的说明' })).toBeVisible()
+  await expect(page.getByText('图片作者：示例图片作者')).toBeVisible()
+  await expect(page.getByRole('button', { name: '显示答案' })).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: '放大图片 原始图表' }).click()
+  const dialog = page.getByRole('dialog', { name: '图片原图' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator('img')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('mobile-original.png') })
+  await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0)
+  await page.reload(); await expect(page.getByText('收录图表，供之后引用。')).toBeVisible()
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.screenshot({ path: testInfo.outputPath('reference-desktop.png'), fullPage: true })
+  await page.getByRole('link', { name: '编辑卡片 ↗' }).click()
+  await page.getByLabel('我的说明', { exact: true }).fill('修改说明仍保留原图。')
+  await page.getByRole('button', { name: '保存卡片', exact: true }).click()
+  await expect(page).toHaveURL(url)
+  await expect(page.locator('.reference-note')).toContainText('修改说明仍保留原图。')
+  await page.goto('/collections/new'); await page.getByLabel('合集名称').fill('图片资料合集')
+  await page.getByRole('button', { name: '保存合集', exact: true }).click()
+  await page.getByRole('button', { name: '＋ 添加卡片' }).click()
+  await page.getByRole('button', { name: /图片资料闭环/ }).click()
+  await page.getByRole('button', { name: '翻阅卡片', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '图片资料闭环' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '显示答案' })).toHaveCount(0)
+  await page.goto('/knowledge?type=reference'); await expect(page.getByRole('link', { name: '图片资料闭环', exact: true })).toBeVisible()
+  await page.goto('/settings'); await page.getByRole('button', { name: '退出登录', exact: true }).click()
+  await page.goto('/knowledge/references/' + id)
+  await expect(page.getByText('修改说明仍保留原图。')).toHaveCount(0)
+})

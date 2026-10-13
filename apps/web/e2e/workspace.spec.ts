@@ -117,7 +117,7 @@ test('four actual pages, mobile navigation, failure recovery and cache isolation
   await expect(page.getByText('这里还没有卡片')).toBeVisible()
   await page.goto('/settings')
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
-  await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible()
+  await expect(page.locator('.account-trigger')).toHaveText('登录')
   await expect(page.locator(`a[href='/knowledge/cards/${knowledgeId}']`)).toHaveCount(0)
   await page.goto(`/knowledge/cards/${knowledgeId}`)
   await expect(page.getByText('演示空间 · 只读')).toBeVisible()

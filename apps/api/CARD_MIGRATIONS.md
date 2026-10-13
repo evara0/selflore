@@ -13,6 +13,8 @@
 
 ## 开发库执行
 
+常用完整备份与实际恢复核验入口现为项目根`backup-db.cmd`及`backup-db.cmd -Rehearse`，详见[备份恢复说明](../../DATABASE_BACKUP.md)。迁移前生成的新备份保留在`backups/database`，原2026-10-08迁移前备份仍按下文记录保留。
+
 在 PowerShell 的 `G:\selflore\apps\api` 运行：
 
 ```powershell
@@ -35,3 +37,7 @@ app 角色仅得到明确版本清单的必要 DML：学习日志和活动仅 SE
 2026-10-08：用户配置凭据后，对127.0.0.1:6171/selflore_dev完成实际迁移。该库原先只有app.connection_probe，故依次执行0001、0002、0003；原表行数及逐行摘要不变，13张业务表、profile回填条件、应用角色授权和public.pg_trgm已核对，重跑为空操作。未清空数据、未导入示例、未创建账号。
 
 迁移前完整备份：`G:\selflore\.cache\backups\dev-before-card-migration-20261008-092330\selflore_dev.dump`，pg_restore --list读取成功；同目录verification.json记录目标、版本、备份SHA-256及原表摘要。缓存备份不纳入Git，请保留至验收完成。生产未连接。应用启动没有自动迁移。应用回退保留增量表与原身份表，不提供清空重建脚本或破坏性down迁移。
+
+## 0005_reference_media
+
+追加第三类reference、note_md与来源字段、attachments和card_attachments、同所有者外键、ready不可变及资料最终非空约束。历史SQL不改，旧卡片新字段默认NULL。日常启用前备份并明确运行迁移，启动不会代为执行。图片目录与发布目录分开，v2联合备份及隔离恢复见项目根MEDIA_STORAGE.md。

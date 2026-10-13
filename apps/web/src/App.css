@@ -298,3 +298,23 @@
 .demo-banner p { margin: 5px 0 0; font-size: 13px; line-height: 1.6; }
 .demo-banner .button { flex-shrink: 0; }
 @media (max-width: 600px) { .demo-banner { align-items: flex-start; flex-direction: column; gap: 12px; padding: 14px 16px; } }
+
+/* Private image materials */
+.attachment-gallery figure { margin: 1rem 0; }
+.image-button { display:block; width:100%; padding:0; border:0; background:transparent; cursor:zoom-in; }
+.attachment-thumb { display:block; max-width:100%; max-height:480px; width:auto; height:auto; margin:auto; object-fit:contain; border-radius:10px; }
+.reference-card .attachment-thumb { max-height:190px; margin:1rem auto; }
+.attachment-gallery figcaption { margin-top:.6rem; color:var(--muted); }
+.attachment-gallery figcaption small { display:block; }
+.reference-note { margin-top:1.5rem; padding:1rem; border-left:3px solid #93a58d; background:#f6f7f1; }
+.image-dialog { max-width:95vw; max-height:92vh; padding:1rem; border:0; border-radius:14px; overflow:auto; }
+.image-dialog::backdrop { background:#132018cc; }
+.original-image { display:block; max-width:none; width:auto; height:auto; }
+.image-close { position:sticky; top:0; display:block; margin-left:auto; z-index:1; background:white; }
+.image-uploader { border:1px dashed #93a58d; padding:1rem; border-radius:12px; }
+.uploaded-image { margin-top:1rem; padding:1rem; border:1px solid #ddd; border-radius:10px; }
+.uploaded-image .attachment-thumb { max-height:180px; }
+.uploaded-image label { margin-top:.6rem; }
+.uploaded-image button, .upload-attempt button { margin:.4rem; }
+.upload-attempt { padding:.8rem 0; }
+@media(max-width:600px) { .original-image { max-width:none; } .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }

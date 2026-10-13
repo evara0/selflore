@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from datetime import date
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -11,13 +12,26 @@ class Input(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
 
+class AttachmentLink(Input):
+    id: UUID
+    caption: str = Field(default='', max_length=2000)
+    alt_text: str = Field(default='', max_length=2000)
+    creator_name: str | None = Field(default=None, max_length=200)
+
+
 class CardContent(Input):
-    kind: Literal['knowledge', 'opinion']
+    kind: Literal['knowledge', 'opinion', 'reference']
     form: Literal['qa', 'cloze'] | None = None
     title: str = Field(min_length=1, max_length=200)
     question_md: str | None = None
     answer_md: str | None = None
     body_md: str | None = None
+    note_md: str | None = None
+    attachments: list[AttachmentLink] = Field(default_factory=list, max_length=10)
+    source_author: str | None = Field(default=None, max_length=200)
+    source_publisher: str | None = Field(default=None, max_length=200)
+    source_platform: str | None = Field(default=None, max_length=80)
+    source_published_on: date | None = None
     source_title: str | None = Field(default=None, max_length=200)
     source_url: str | None = Field(default=None, max_length=2048)
     source_locator: str | None = Field(default=None, max_length=200)
@@ -26,7 +40,7 @@ class CardContent(Input):
     processing_state: Literal['inbox', 'organized'] = 'inbox'
     is_bookmarked: bool = False
 
-    @field_validator('question_md', 'answer_md', 'body_md')
+    @field_validator('question_md', 'answer_md', 'body_md', 'note_md')
     @classmethod
     def markdown_size(cls, value):
         if value is not None and len(value.encode('utf-8')) > 65536:
@@ -44,7 +58,16 @@ class CardContent(Input):
     def valid_content(self):
         if len(set(self.topic_ids)) != len(self.topic_ids) or len(set(self.tag_ids)) != len(self.tag_ids):
             raise ValueError('分类或标签不能重复')
-        if self.kind == 'opinion':
+        if len({item.id for item in self.attachments}) != len(self.attachments):
+            raise ValueError('图片不能重复')
+        if self.kind != 'reference' and (self.attachments or self.note_md is not None):
+            raise ValueError('只有资料支持图片及个人说明')
+        if self.kind == 'reference':
+            if self.form is not None or self.question_md is not None or self.answer_md is not None:
+                raise ValueError('资料不使用问题和答案')
+            if not self.body_md and not self.attachments:
+                raise ValueError('资料需要原始摘录或完成图片')
+        elif self.kind == 'opinion':
             if self.form is not None or not self.body_md or self.question_md is not None or self.answer_md is not None:
                 raise ValueError('观点需要独立正文')
         elif self.form == 'qa':
@@ -57,8 +80,8 @@ class CardContent(Input):
             cloze_indices(self.body_md)
         else:
             raise ValueError('知识需要问答或填空形式')
-        if self.kind == 'knowledge' and len(self.topic_ids) > 1:
-            raise ValueError('知识最多一个分类')
+        if self.kind in ('knowledge', 'reference') and len(self.topic_ids) > 1:
+            raise ValueError('知识或资料最多一个分类')
         return self
 
 
@@ -72,6 +95,12 @@ class CardPatch(Input):
     question_md: str | None = None
     answer_md: str | None = None
     body_md: str | None = None
+    note_md: str | None = None
+    attachments: list[AttachmentLink] | None = Field(default=None, max_length=10)
+    source_author: str | None = Field(default=None, max_length=200)
+    source_publisher: str | None = Field(default=None, max_length=200)
+    source_platform: str | None = Field(default=None, max_length=80)
+    source_published_on: date | None = None
     source_title: str | None = Field(default=None, max_length=200)
     source_url: str | None = Field(default=None, max_length=2048)
     source_locator: str | None = Field(default=None, max_length=200)
@@ -91,7 +120,7 @@ class Lifecycle(Revision):
 
 class TaxonomyCreate(Input):
     name: str = Field(min_length=1, max_length=80)
-    kind: Literal['knowledge', 'opinion'] | None = None
+    kind: Literal['knowledge', 'opinion', 'reference'] | None = None
 
 
 class TaxonomyPatch(Input):

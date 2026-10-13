@@ -1,9 +1,10 @@
 import type { Card, Collection, Label } from './workspace'
 
-export const DEMO_CACHE_KEY = 'guest-demo-v1'
+export const DEMO_CACHE_KEY = 'guest-demo-v2'
 export const demoId = (n: number) => `de000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const knowledgeTopics: Label[] = [{ id: demoId(101), name: '学习方法', kind: 'knowledge' }, { id: demoId(102), name: '科学与思考', kind: 'knowledge' }]
 const opinionTopics: Label[] = [{ id: demoId(103), name: '知识管理', kind: 'opinion' }, { id: demoId(104), name: '日常思考', kind: 'opinion' }]
+const referenceTopics: Label[] = [{ id: demoId(105), name: '阅读材料', kind: 'reference' }]
 const tags: Label[] = [{ id: demoId(201), name: '主动回忆' }, { id: demoId(202), name: '卡片笔记' }, { id: demoId(203), name: '思维工具' }]
 const examples = [
   ['主动回忆为什么有效？', 'qa', '什么是主动回忆？', '主动回忆是先不看材料，尝试从记忆中提取答案，再检查和修正。提取本身也是学习的一部分。'],
@@ -27,11 +28,12 @@ const cards: Card[] = examples.map(([title, form, question, content], index) => 
     tags: [tag], topics: [topic], tag_ids: [tag.id], topic_ids: [topic.id], link_count: index === 6 ? 1 : index === 7 ? 2 : 0,
     backlink_count: index === 0 || index === 5 || index === 6 ? 1 : 0, updated_at: `2026-10-08T0${index}:00:00Z` }
 })
+cards.push({ id: demoId(10), title: '收录材料，再形成自己的理解', code: '示例-010', kind: 'reference', form: null, body_md: '这是一张通用示例图，演示外部材料的收录方式。', note_md: '先保留出处和原始材料，之后可以用自己的观点引用它。', excerpt: '示例资料：原材料与个人说明分开展示。', source_author: 'SelfLore演示', source_platform: '示例', attachments: [{ id: demoId(401), caption: '资料收录示例', alt_text: '从资料到知识与观点的示意图', demo_url: '/demo/reference.svg' }], lifecycle: 'active', revision: 1, is_bookmarked: false, processing_state: 'inbox', topics: referenceTopics, topic_ids: [demoId(105)], tags: [], tag_ids: [], updated_at: '2026-10-12T00:00:00Z' })
 const collections: Collection[] = [
   { id: demoId(301), title: '学习与思考入门', description_md: '从知识到观点，体验一段混合卡片阅读。', cover_style: 'curve', cover_color: 'sage', is_favorite: true, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 2 },
-  { id: demoId(302), title: '日常思维工具', description_md: '用几个问题，重新看看日常的选择与判断。', cover_style: 'radial', cover_color: 'clay', is_favorite: false, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 4, available_items: 4, knowledge_count: 3, opinion_count: 1 },
+  { id: demoId(302), title: '日常思维工具', description_md: '用几个问题，重新看看日常的选择与判断。', cover_style: 'radial', cover_color: 'clay', is_favorite: false, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 1, reference_count: 1 },
 ]
-const memberIds: Record<string, number[]> = { [demoId(301)]: [1, 3, 7, 6, 8], [demoId(302)]: [4, 5, 6, 9] }
+const memberIds: Record<string, number[]> = { [demoId(301)]: [1, 3, 7, 6, 8], [demoId(302)]: [4, 5, 6, 9, 10] }
 const outgoing: Record<string, number[]> = { [demoId(7)]: [1], [demoId(8)]: [6, 7] }
 function page<T>(items: T[], query: URLSearchParams, defaultLimit = 12) {
   const limit = Math.max(1, Math.min(100, Number(query.get('limit')) || defaultLimit)), offset = Math.max(0, Number(query.get('offset')) || 0)
@@ -40,16 +42,16 @@ function page<T>(items: T[], query: URLSearchParams, defaultLimit = 12) {
 function related(card: Card) { return { id: card.id, title: card.title, kind: card.kind, lifecycle: card.lifecycle, origins: ['inline'] } }
 function read(path: string): unknown {
   const url = new URL(path, 'https://demo.invalid'), route = url.pathname, query = url.searchParams
-  if (route === '/cards/summary') return { knowledge: 6, opinions: 3, inbox: 1 }
+  if (route === '/cards/summary') return { knowledge: 6, opinions: 3, references: 1, inbox: 2 }
   if (route === '/cards') {
-    let items = cards.filter(card => (!query.get('kind') || card.kind === query.get('kind')) && (!query.get('lifecycle') || card.lifecycle === query.get('lifecycle')) &&
+    let items = cards.filter(card => (!query.get('kind') || card.kind === query.get('kind')) && (!query.get('kinds') || query.get('kinds')!.split(',').includes(card.kind)) && (!query.get('lifecycle') || card.lifecycle === query.get('lifecycle')) &&
       (!query.get('topic_id') || card.topic_ids.includes(query.get('topic_id')!)) && (!query.get('tag_id') || card.tag_ids.includes(query.get('tag_id')!)) &&
       (query.get('is_bookmarked') !== 'true' || card.is_bookmarked) && (!query.get('processing_state') || card.processing_state === query.get('processing_state')) &&
-      `${card.title} ${card.question_md || ''} ${card.body_md || ''} ${card.answer_md || ''} ${card.tags.map(t => t.name).join(' ')}`.includes(query.get('q') || ''))
+      `${card.title} ${card.question_md || ''} ${card.body_md || ''} ${card.note_md || ''} ${card.source_author || ''} ${card.answer_md || ''} ${card.tags.map(t => t.name).join(' ')}`.includes(query.get('q') || ''))
     items = [...items].sort((a, b) => query.get('sort') === 'code_asc' ? a.code.localeCompare(b.code) : query.get('sort') === 'connections_desc' ? (b.link_count || 0) + (b.backlink_count || 0) - (a.link_count || 0) - (a.backlink_count || 0) : b.id.localeCompare(a.id))
     return page(items.map(({ question_md: _q, answer_md: _a, body_md: _b, ...summary }) => summary), query)
   }
-  if (route === '/topics') return { items: (query.get('kind') === 'knowledge' ? knowledgeTopics : opinionTopics).map(t => ({ ...t, card_count: cards.filter(c => c.topic_ids.includes(t.id)).length })) }
+  if (route === '/topics') return { items: (query.get('kind') === 'knowledge' ? knowledgeTopics : query.get('kind') === 'reference' ? referenceTopics : query.get('kind') === 'opinion' ? opinionTopics : [...knowledgeTopics, ...opinionTopics, ...referenceTopics]).map(t => ({ ...t, card_count: cards.filter(c => c.topic_ids.includes(t.id)).length })) }
   if (route === '/tags') return { items: tags }
   const cardMatch = /^\/cards\/([^/]+)(\/links)?$/.exec(route)
   if (cardMatch) {
@@ -64,7 +66,7 @@ function read(path: string): unknown {
     return collectionMatch[2] ? { revision: 1, items: memberIds[collection.id].map((n, i) => ({ ...cards[n - 1], item_id: demoId(Number(collection.id.slice(-3)) * 10 + i), position: i })) } : collection
   }
   if (route === '/me/profile') return { display_name: '演示账号', username: 'demo', bio: '这是只读演示资料。卡片、数量和学习足迹均为示例，登录后开始建立你自己的空间。', avatar_color: 'sage', interests: ['学习方法', '卡片笔记', '日常思考'], timezone: 'Asia/Shanghai', revision: 1, daily_new_limit: 20, daily_review_goal: 20 }
-  if (route === '/me/summary') return { knowledge: 6, opinions: 3, collections: 2, streak: 3 }
+  if (route === '/me/summary') return { knowledge: 6, opinions: 3, references: 1, collections: 2, streak: 3 }
   if (route === '/me/pinned-collections') return { items: collections }
   if (route === '/me/activity') return page(cards.filter(c => !query.get('kind') || c.kind === query.get('kind')).slice().reverse().map(c => ({ id: `sample-${c.id}`, card_id: c.id, kind: c.kind, lifecycle: c.lifecycle, event_kind: 'card_created', entity_title: c.title, occurred_at: c.updated_at })), query, 8)
   if (route === '/me/heatmap') {

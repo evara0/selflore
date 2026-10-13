@@ -4,8 +4,10 @@ import { DEMO_CACHE_KEY, readDemo } from './demo'
 
 export type Session = { id: string; username: string; role: 'member' | 'admin'; is_active: boolean; csrf_token: string }
 export type Label = { id: string; name: string; card_count?: number; kind?: string }
-export type Card = { id: string; title: string; code: string; kind: 'knowledge' | 'opinion'; form: 'qa' | 'cloze' | null; question_md?: string; answer_md?: string; body_md?: string; excerpt?: string; lifecycle: string; revision: number; is_bookmarked: boolean; processing_state: string; source_title?: string; source_url?: string; source_locator?: string; tags: Label[]; topics: Label[]; tag_ids: string[]; topic_ids: string[]; link_count?: number; backlink_count?: number; updated_at?: string }
-export type Collection = { id: string; title: string; description_md: string; cover_style: string; cover_color: string; is_favorite: boolean; is_pinned: boolean; revision: number; lifecycle: string; total_items: number; available_items: number; knowledge_count: number; opinion_count: number }
+export type Attachment = { id: string; caption?: string; alt_text?: string; creator_name?: string; mime_type?: string; width?: number; height?: number; original_bytes?: number; demo_url?: string }
+export const cardKindName = (kind: string) => kind === 'knowledge' ? '事实知识' : kind === 'reference' ? '资料卡' : '原子观点'
+export type Card = { id: string; title: string; code: string; kind: 'knowledge' | 'opinion' | 'reference'; form: 'qa' | 'cloze' | null; question_md?: string; answer_md?: string; body_md?: string; note_md?: string; attachments?: Attachment[]; source_author?: string; source_publisher?: string; source_platform?: string; source_published_on?: string; excerpt?: string; lifecycle: string; revision: number; is_bookmarked: boolean; processing_state: string; source_title?: string; source_url?: string; source_locator?: string; tags: Label[]; topics: Label[]; tag_ids: string[]; topic_ids: string[]; link_count?: number; backlink_count?: number; updated_at?: string }
+export type Collection = { id: string; title: string; description_md: string; cover_style: string; cover_color: string; is_favorite: boolean; is_pinned: boolean; revision: number; lifecycle: string; total_items: number; available_items: number; knowledge_count: number; opinion_count: number; reference_count?: number }
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number }
 export type Profile = { display_name: string; username: string; bio: string; avatar_color: string; interests: string[]; timezone: string; revision: number; daily_new_limit: number; daily_review_goal: number }
 export type ReviewSummary = { due_units: number; new_units: number; today_completed: number; mastered_cards: number; daily_review_goal: number }
@@ -56,7 +58,7 @@ export function params(values: Record<string, string | number | boolean | null |
   Object.entries(values).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') query.set(key, String(value)) })
   return query.toString()
 }
-export function cardUrl(card: { id: string; kind: string }) { return card.kind === 'knowledge' ? `/knowledge/cards/${card.id}` : `/opinions?card=${card.id}` }
+export function cardUrl(card: { id: string; kind: string }) { return card.kind === 'knowledge' ? `/knowledge/cards/${card.id}` : card.kind === 'reference' ? `/knowledge/references/${card.id}` : `/opinions?card=${card.id}` }
 export function showDate(value?: string) { return value ? new Date(value).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' }
 export function clozeText(text: string, reveal: boolean) {
   return text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`)|(\{\{c\d+::([^{}]+)\}\})/g, (_whole, code, _cloze, content) => code || (reveal ? content.split('::')[0] : `【${content.split('::')[1] || '…'}】`))

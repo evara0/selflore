@@ -17,6 +17,8 @@ for (const authenticated of [false, true]) {
           : { status: 401, json: { detail: '请先登录' } })
       } else if (path === '/auth/config') {
         await route.fulfill({ json: { registration_enabled: true } })
+      } else if (authenticated && path.startsWith('/attachments/')) {
+        await route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" fill="gray"/></svg>' })
       } else if (authenticated && path === '/cards' && request.method() === 'POST') {
         writes.push(path)
         expect(request.headers()['x-csrf-token']).toBe('mobile-test-token')
