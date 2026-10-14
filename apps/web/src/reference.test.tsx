@@ -54,7 +54,7 @@ test('reference shows material and personal note separately, releases private pr
 
 test('guest reference and mixed filters use only demo data and packaged image', async () => {
   mount(<Knowledge/>, true)
-  expect(await screen.findByRole('link', { name: '收录材料，再形成自己的理解' })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: '一周借阅记录' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /^资料$/ }))
   await waitFor(() => expect(screen.queryByRole('link', { name: '主动回忆为什么有效？' })).toBeNull())
   await waitFor(() => expect(document.querySelector('img')?.getAttribute('src')).toBe('/demo/reference.svg'))
@@ -65,7 +65,7 @@ test('guest reference and mixed filters use only demo data and packaged image', 
 test('card picker identifies external materials as reference cards', async () => {
   const select = vi.fn()
   mount(<CardPicker onSelect={select}/>, true)
-  const button = await screen.findByRole('button', { name: /收录材料.*资料卡/ })
+  const button = await screen.findByRole('button', { name: /一周借阅记录.*资料卡/ })
   fireEvent.click(button)
   expect(select.mock.calls[0][0].kind).toBe('reference')
 })

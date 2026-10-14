@@ -5,7 +5,7 @@ import { DEMO_CACHE_KEY, readDemo } from './demo'
 export type Session = { id: string; username: string; role: 'member' | 'admin'; is_active: boolean; csrf_token: string }
 export type Label = { id: string; name: string; card_count?: number; kind?: string }
 export type Attachment = { id: string; caption?: string; alt_text?: string; creator_name?: string; mime_type?: string; width?: number; height?: number; original_bytes?: number; demo_url?: string }
-export const cardKindName = (kind: string) => kind === 'knowledge' ? '事实知识' : kind === 'reference' ? '资料卡' : '原子观点'
+export const cardKindName = (kind: string) => kind === 'knowledge' ? '事实知识' : kind === 'reference' ? '资料卡' : '观点'
 export type Card = { id: string; title: string; code: string; kind: 'knowledge' | 'opinion' | 'reference'; form: 'qa' | 'cloze' | null; question_md?: string; answer_md?: string; body_md?: string; note_md?: string; attachments?: Attachment[]; source_author?: string; source_publisher?: string; source_platform?: string; source_published_on?: string; excerpt?: string; lifecycle: string; revision: number; is_bookmarked: boolean; processing_state: string; source_title?: string; source_url?: string; source_locator?: string; tags: Label[]; topics: Label[]; tag_ids: string[]; topic_ids: string[]; link_count?: number; backlink_count?: number; updated_at?: string }
 export type Collection = { id: string; title: string; description_md: string; cover_style: string; cover_color: string; is_favorite: boolean; is_pinned: boolean; revision: number; lifecycle: string; total_items: number; available_items: number; knowledge_count: number; opinion_count: number; reference_count?: number }
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number }
@@ -37,7 +37,7 @@ export function useApi() {
   const { session, guest, openLogin } = useIdentity()
   return async <T,>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> => {
     if (guest && !session) {
-      if (method !== 'GET') { openLogin(); throw new ApiError('演示空间为只读，请登录或注册后保存到自己的空间。', 401) }
+      if (method !== 'GET') { openLogin(); throw new ApiError('演示空间为只读，请先登录。', 401) }
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       return readDemo<T>(path)
     }

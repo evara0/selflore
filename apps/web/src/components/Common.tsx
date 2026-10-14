@@ -7,6 +7,7 @@ export function Icon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
     book: <><path d="M12 5C7 2 3 3 3 5v14c4-2 7-1 9 1 2-2 5-3 9-1V5c0-2-4-3-9 0Z"/><path d="M12 5v15"/></>,
     card: <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
+    pen: <><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z"/><path d="m13 6 5 5M4 15l5 5"/></>,
     link: <><path d="m10 14 4-4M8 16l-2 2a4 4 0 0 1-5-5l5-5a4 4 0 0 1 5 0M16 8l2-2a4 4 0 0 1 5 5l-5 5a4 4 0 0 1-5 0"/></>,
     search: <><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></>,
     person: <><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></>,
@@ -17,17 +18,16 @@ export function Icon({ name }: { name: string }) {
   }
   return <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.card}</svg>
 }
-export function PageHeading({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
-  const kicker: Record<string, string> = { 知识: 'KNOWLEDGE / INDEX', 观点: 'THOUGHTS / INDEX', 合集: 'COLLECTIONS / INDEX', 我的: 'PERSONAL / HOME', 今日复习: 'KNOWLEDGE / REVIEW' }
-  return <div className="page-heading"><div>{kicker[title] && <div className="page-kicker">{kicker[title]}</div>}<h1>{title}</h1><p>{description}</p></div><div className="heading-action">{children}</div></div>
+export function PageHeading({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
+  return <div className="page-heading"><div><h1>{title}</h1>{description && <p>{description}</p>}</div><div className="heading-action">{children}</div></div>
 }
 export function CardImprint({ code }: { code?: string }) {
-  return <div className="card-imprint"><span>{code || 'SELFLORE'}</span><span className="imprint-pattern" aria-hidden="true"/></div>
+  return <div className="card-imprint"><span>{code}</span><span className="imprint-pattern" aria-hidden="true"/></div>
 }
 export function QueryState({ query, empty = false, children }: { query: { isPending: boolean; error: Error | null; refetch: () => unknown }; empty?: boolean; children?: ReactNode }) {
   if (query.error) return <div className="state error" role="alert"><p>{query.error.message}</p><button onClick={() => query.refetch()}>重试</button></div>
   if (query.isPending) return <div className="state" role="status">正在加载…</div>
-  if (empty) return <div className="state"><Icon name="card"/><h3>这里还没有卡片</h3><p>从一个问题或一个想法开始。</p><Link className="button" to="/new">新建卡片</Link></div>
+  if (empty) return <div className="state"><Icon name="card"/><h3>这里还没有卡片</h3><Link className="button" to="/new">新建卡片</Link></div>
   return children
 }
 export function Tags({ items }: { items?: Label[] }) { return <div className="tags">{items?.map(item => <span key={item.id} className="tag">{item.name}</span>)}</div> }

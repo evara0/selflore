@@ -69,7 +69,7 @@ for (const authenticated of [false, true]) {
     if (authenticated) {
       await expect(page.getByRole('heading', { name: '新建卡片' })).toBeVisible()
       await expect(page.getByRole('button', { name: '事实知识', exact: true })).toBeVisible()
-      await expect(page.getByRole('button', { name: '原子观点', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: '观点', exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: '新建合集 ↗', exact: true })).toBeVisible()
       await page.getByLabel('标题', { exact: true }).fill('移动底栏创建的知识')
       await page.getByLabel('问题', { exact: true }).fill('如何从移动端新建？')

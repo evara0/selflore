@@ -1,6 +1,6 @@
 import type { Card, Collection, Label } from './workspace'
 
-export const DEMO_CACHE_KEY = 'guest-demo-v2'
+export const DEMO_CACHE_KEY = 'guest-demo-v3'
 export const demoId = (n: number) => `de000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const knowledgeTopics: Label[] = [{ id: demoId(101), name: '学习方法', kind: 'knowledge' }, { id: demoId(102), name: '科学与思考', kind: 'knowledge' }]
 const opinionTopics: Label[] = [{ id: demoId(103), name: '知识管理', kind: 'opinion' }, { id: demoId(104), name: '日常思考', kind: 'opinion' }]
@@ -13,9 +13,9 @@ const examples = [
   ['相关性与因果性', 'qa', '两个现象一起发生，就说明一个导致另一个吗？', '不一定。它们可能受到共同因素影响，也可能只是巧合；需要更多证据建立因果关系。'],
   ['什么是机会成本？', 'qa', '选择一件事时，机会成本指什么？', '机会成本是为了该选择而放弃的最佳替代方案的价值。它提醒我们同时考虑放弃了什么。'],
   ['费曼学习法的提醒', 'qa', '把概念讲给初学者时，为什么能发现理解中的空白？', '解释需要把概念、关系和例子组织起来。说不清的地方往往需要进一步查证和理解。'],
-  ['笔记的价值在于连接', 'opinion', '', `一张笔记不必容纳所有信息。把一个想法说清楚，再连接已有知识，能让它持续生长。\n\n例如 [[${demoId(1)}|主动回忆]] 提醒我：笔记也应帮助我重新思考，而不只是储存文字。`],
-  ['让阅读留下自己的问题', 'opinion', '', `读完一段内容后，先写下自己的问题，再整理答案。问题让阅读从接收转向探索。\n\n这与 [[${demoId(6)}|费曼学习法]] 的解释过程相呼应，也能连接到 [[${demoId(7)}|笔记的连接]]。`],
-  ['给思考留一点空白', 'opinion', '', '有时不急着把所有笔记归类，反而能发现意外的连接。定期回看待整理的想法，让结构随着理解慢慢形成。'],
+  ['解释一个概念时卡住了', 'opinion', '', `今天试着向朋友解释间隔重复，讲到“为什么要拉开时间”时卡住了。我会做题，却还说不清理由。\n\n例如 [[${demoId(1)}|主动回忆]] 可以帮我检查自己是否记得；下一次还要试着把理由讲清楚。`],
+  ['读完一章后合上书', 'opinion', '', `昨晚读完一章，合上书后只复述出了两个例子，没说出作者的结论。今天重读时，先补上结论和支持它的证据。\n\n这与 [[${demoId(6)}|费曼学习法]] 中“讲给初学者”的做法相似。我也记下了上次 [[${demoId(7)}|解释卡住的经历]]。`],
+  ['先把购物车放一晚', 'opinion', '', '昨晚把一盏台灯放进购物车，今天发现桌上那盏仍然够用。先等一晚，让我分清了想换新的和实际需要。'],
 ] as const
 const cards: Card[] = examples.map(([title, form, question, content], index) => {
   const kind = form === 'opinion' ? 'opinion' : 'knowledge'
@@ -28,10 +28,10 @@ const cards: Card[] = examples.map(([title, form, question, content], index) => 
     tags: [tag], topics: [topic], tag_ids: [tag.id], topic_ids: [topic.id], link_count: index === 6 ? 1 : index === 7 ? 2 : 0,
     backlink_count: index === 0 || index === 5 || index === 6 ? 1 : 0, updated_at: `2026-10-08T0${index}:00:00Z` }
 })
-cards.push({ id: demoId(10), title: '收录材料，再形成自己的理解', code: '示例-010', kind: 'reference', form: null, body_md: '这是一张通用示例图，演示外部材料的收录方式。', note_md: '先保留出处和原始材料，之后可以用自己的观点引用它。', excerpt: '示例资料：原材料与个人说明分开展示。', source_author: 'SelfLore演示', source_platform: '示例', attachments: [{ id: demoId(401), caption: '资料收录示例', alt_text: '从资料到知识与观点的示意图', demo_url: '/demo/reference.svg' }], lifecycle: 'active', revision: 1, is_bookmarked: false, processing_state: 'inbox', topics: referenceTopics, topic_ids: [demoId(105)], tags: [], tag_ids: [], updated_at: '2026-10-12T00:00:00Z' })
+cards.push({ id: demoId(10), title: '一周借阅记录', code: '示例-010', kind: 'reference', form: null, body_md: '示例表格记录了三个日期的借阅数量，数据为虚构。', note_md: '周三的借阅量最多，但只有一周记录，还不能判断每周是否如此。', excerpt: '三个日期的借阅数量，附个人观察。', source_author: 'SelfLore演示', source_platform: '示例', attachments: [{ id: demoId(401), caption: '一周借阅记录（虚构数据）', alt_text: '周一 12 本、周三 21 本、周五 16 本的借阅记录示例表', demo_url: '/demo/reference.svg' }], lifecycle: 'active', revision: 1, is_bookmarked: false, processing_state: 'inbox', topics: referenceTopics, topic_ids: [demoId(105)], tags: [], tag_ids: [], updated_at: '2026-10-12T00:00:00Z' })
 const collections: Collection[] = [
-  { id: demoId(301), title: '学习与思考入门', description_md: '从知识到观点，体验一段混合卡片阅读。', cover_style: 'curve', cover_color: 'sage', is_favorite: true, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 2 },
-  { id: demoId(302), title: '日常思维工具', description_md: '用几个问题，重新看看日常的选择与判断。', cover_style: 'radial', cover_color: 'clay', is_favorite: false, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 1, reference_count: 1 },
+  { id: demoId(301), title: '读书时记下的几张卡片', description_md: '记忆方法、解释概念和读后复述。', cover_style: 'curve', cover_color: 'sage', is_favorite: true, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 2 },
+  { id: demoId(302), title: '日常判断', description_md: '因果、取舍与一次购物记录。', cover_style: 'radial', cover_color: 'clay', is_favorite: false, is_pinned: true, revision: 1, lifecycle: 'active', total_items: 5, available_items: 5, knowledge_count: 3, opinion_count: 1, reference_count: 1 },
 ]
 const memberIds: Record<string, number[]> = { [demoId(301)]: [1, 3, 7, 6, 8], [demoId(302)]: [4, 5, 6, 9, 10] }
 const outgoing: Record<string, number[]> = { [demoId(7)]: [1], [demoId(8)]: [6, 7] }
@@ -65,7 +65,7 @@ function read(path: string): unknown {
     const collection = collections.find(c => c.id === collectionMatch[1]); if (!collection) throw new Error('这个演示合集不存在，请返回合集列表。')
     return collectionMatch[2] ? { revision: 1, items: memberIds[collection.id].map((n, i) => ({ ...cards[n - 1], item_id: demoId(Number(collection.id.slice(-3)) * 10 + i), position: i })) } : collection
   }
-  if (route === '/me/profile') return { display_name: '演示账号', username: 'demo', bio: '这是只读演示资料。卡片、数量和学习足迹均为示例，登录后开始建立你自己的空间。', avatar_color: 'sage', interests: ['学习方法', '卡片笔记', '日常思考'], timezone: 'Asia/Shanghai', revision: 1, daily_new_limit: 20, daily_review_goal: 20 }
+  if (route === '/me/profile') return { display_name: '演示账号', username: 'demo', bio: '只读示例账号。', avatar_color: 'sage', interests: ['学习方法', '卡片笔记', '日常思考'], timezone: 'Asia/Shanghai', revision: 1, daily_new_limit: 20, daily_review_goal: 20 }
   if (route === '/me/summary') return { knowledge: 6, opinions: 3, references: 1, collections: 2, streak: 3 }
   if (route === '/me/pinned-collections') return { items: collections }
   if (route === '/me/activity') return page(cards.filter(c => !query.get('kind') || c.kind === query.get('kind')).slice().reverse().map(c => ({ id: `sample-${c.id}`, card_id: c.id, kind: c.kind, lifecycle: c.lifecycle, event_kind: 'card_created', entity_title: c.title, occurred_at: c.updated_at })), query, 8)

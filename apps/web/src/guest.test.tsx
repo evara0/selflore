@@ -51,7 +51,7 @@ test('guest reader resets revealed answers and navigation follows stable opinion
   fireEvent.click(screen.getByRole('button', { name: '显示答案' }))
   expect(await screen.findByText(/主动提取/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '下一张 →' }))
-  await screen.findByRole('heading', { name: '笔记的价值在于连接' })
+  await screen.findByRole('heading', { name: '解释一个概念时卡住了' })
   fireEvent.click((await screen.findAllByRole('link', { name: '主动回忆为什么有效？' }))[0])
   await waitFor(() => expect(location.pathname).toBe(`/knowledge/cards/${demoId(1)}`))
   expect(screen.queryByText(/主动回忆是先不看材料/)).toBeNull()
@@ -61,7 +61,7 @@ test('guest reader resets revealed answers and navigation follows stable opinion
 test.each(['/new', '/knowledge/review', '/settings', '/admin/users', `/cards/${demoId(1)}/edit`, '/collections/new'])('guest protected route %s prompts authentication without loading a write form', async path => {
   history.replaceState(null, '', path)
   guestFetch(); render(<App/>)
-  expect(await screen.findByRole('heading', { name: '在自己的空间继续' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '请先登录' })).toBeTruthy()
   await waitFor(() => expect(screen.getByRole('dialog').hasAttribute('open')).toBe(true))
   expect(screen.queryByRole('button', { name: '保存卡片' })).toBeNull()
   expect(calls.every(c => c.startsWith('GET /api/auth/'))).toBe(true)
