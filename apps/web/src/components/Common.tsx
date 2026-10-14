@@ -18,7 +18,11 @@ export function Icon({ name }: { name: string }) {
   return <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.card}</svg>
 }
 export function PageHeading({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
-  return <div className="page-heading"><div><h1>{title}</h1><p>{description}</p></div><div className="heading-action">{children}</div></div>
+  const kicker: Record<string, string> = { 知识: 'KNOWLEDGE / INDEX', 观点: 'THOUGHTS / INDEX', 合集: 'COLLECTIONS / INDEX', 我的: 'PERSONAL / HOME', 今日复习: 'KNOWLEDGE / REVIEW' }
+  return <div className="page-heading"><div>{kicker[title] && <div className="page-kicker">{kicker[title]}</div>}<h1>{title}</h1><p>{description}</p></div><div className="heading-action">{children}</div></div>
+}
+export function CardImprint({ code }: { code?: string }) {
+  return <div className="card-imprint"><span>{code || 'SELFLORE'}</span><span className="imprint-pattern" aria-hidden="true"/></div>
 }
 export function QueryState({ query, empty = false, children }: { query: { isPending: boolean; error: Error | null; refetch: () => unknown }; empty?: boolean; children?: ReactNode }) {
   if (query.error) return <div className="state error" role="alert"><p>{query.error.message}</p><button onClick={() => query.refetch()}>重试</button></div>

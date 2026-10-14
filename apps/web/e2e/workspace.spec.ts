@@ -4,11 +4,13 @@ import { mkdir } from 'node:fs/promises'
 
 const base = 'http://127.0.0.1:24568', password = 'browser-isolated-password-123'
 const shots = '../../docs/design/card-navigation-v1/implemented'
+const themeShots = '../../docs/design/default-letterpress-theme/implemented'
 test.describe.configure({ mode: 'serial' })
-let username: string, token: string, knowledgeId: string, opinionId: string, collectionId: string
+let username: string, token: string, knowledgeId: string, opinionId: string, collectionId: string, knowledgeInk: string | null
 test.beforeAll(async () => {
   if (process.env.SELFLORE_TEST_ISOLATED !== '1') throw new Error('Only run against the explicitly isolated 6179 database / 24568 test server.')
   await mkdir(shots, { recursive: true })
+  await mkdir(themeShots, { recursive: true })
 })
 async function login(page: Page) {
   await page.goto('/knowledge')
@@ -34,6 +36,8 @@ test('real creation, stable reference, mixed reader, rating and personal summary
   await page.getByRole('button', { name: '保存卡片', exact: true }).click()
   await expect(page).toHaveURL(/knowledge\/cards\//)
   knowledgeId = page.url().split('/').pop()!
+  knowledgeInk = await page.locator('.card-detail').getAttribute('data-card-ink')
+  expect(knowledgeInk).not.toBeNull()
   await expect(page.getByText('主动提取训练了知识的检索路径，也暴露了理解中的空缺。')).toHaveCount(0)
   await page.getByRole('button', { name: '显示答案', exact: true }).click()
   await expect(page.getByText('主动提取训练了知识的检索路径，也暴露了理解中的空缺。')).toBeVisible()
@@ -59,6 +63,7 @@ test('real creation, stable reference, mixed reader, rating and personal summary
   }
   await page.getByRole('button', { name: '翻阅卡片', exact: true }).click()
   await expect(page.locator('.reader-card h2')).toHaveText('主动回忆为什么有效？')
+  await expect(page.locator('.reader-card')).toHaveAttribute('data-card-ink', knowledgeInk!)
   await expect(page.getByRole('button', { name: '← 上一张' })).toBeDisabled()
   await page.getByRole('button', { name: '显示答案', exact: true }).click()
   await page.getByRole('button', { name: '下一张 →' }).click()
@@ -70,8 +75,10 @@ test('real creation, stable reference, mixed reader, rating and personal summary
   await page.getByRole('button', { name: '置顶到主页' }).click()
   await expect(page.getByRole('button', { name: '取消主页置顶' })).toBeVisible()
   await page.goto('/knowledge/review')
+  await expect(page.locator('.study-card')).toHaveAttribute('data-card-ink', knowledgeInk!)
   await expect(page.getByRole('button', { name: /良好/ })).toHaveCount(0)
   await page.getByRole('button', { name: '显示答案', exact: true }).click()
+  await page.screenshot({ path: themeShots + '/18-review-real-isolated.png', fullPage: true })
   await page.getByRole('button', { name: /良好/ }).click()
   await expect(page.getByText('本轮已完成 1 个复习单元')).toBeVisible()
   await page.goto('/me')

@@ -6,6 +6,8 @@ import { ImageUploader, type ImageUploaderHandle } from '../../components/ImageU
 import { AttachmentGallery } from '../../components/Attachments'
 import { CardPicker, Labels } from '../../components/Selectors'
 
+import { cardInk } from '../../lib/theme'
+
 function useUnsaved(dirty: boolean) {
   const saved = useRef(false)
   const blocker = useBlocker(() => dirty && !saved.current)
@@ -50,7 +52,7 @@ function CardForm({ original, initialKind = 'knowledge' }: { original?: Card; in
     finally { setPending(false) }
   }
   async function resolve() { const current = await api<Card>(`/cards/${original!.id}`); setRevision(current.revision); setConflict(false); setMessage('已读取最新版本号，你的输入仍保留。请核对最新内容后再保存。'); }
-  return <><PageHeading title={original ? '编辑卡片' : '新建卡片'} description="把知识留下，让想法发生连接。"><Link to="/collections/new">新建合集 ↗</Link></PageHeading><form className="editor panel" onSubmit={e => void save(e)} onChange={() => setDirty(true)} onPaste={e => { if (kind === 'reference' && !e.defaultPrevented && e.clipboardData.files.length) { e.preventDefault(); uploader.current?.addFiles([...e.clipboardData.files]); setDirty(true) } }}>
+  return <><PageHeading title={original ? '编辑卡片' : '新建卡片'} description="把知识留下，让想法发生连接。"><Link to="/collections/new">新建合集 ↗</Link></PageHeading><form className="editor panel" data-card-ink={cardInk(original?.id)} onSubmit={e => void save(e)} onChange={() => setDirty(true)} onPaste={e => { if (kind === 'reference' && !e.defaultPrevented && e.clipboardData.files.length) { e.preventDefault(); uploader.current?.addFiles([...e.clipboardData.files]); setDirty(true) } }}>
     <div className="editor-main"><div className="segmented">{['knowledge', 'opinion', 'reference'].map(k => <button type="button" key={k} disabled={!!original} className={kind === k ? 'selected' : ''} onClick={() => { setKind(k); setTopics([]); setDirty(true) }}>{k === 'knowledge' ? '事实知识' : k === 'reference' ? '资料卡' : '原子观点'}</button>)}</div>
     <label>标题<input required maxLength={200} value={title} placeholder="给这张卡片一个清晰的标题" onChange={e => setTitle(e.target.value)}/></label>
     {kind === 'knowledge' && <label>卡片形式<select disabled={!!original} value={form} onChange={e => setForm(e.target.value as 'qa' | 'cloze')}><option value="qa">问答卡片</option><option value="cloze">填空卡片</option></select></label>}
