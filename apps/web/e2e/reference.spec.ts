@@ -7,7 +7,7 @@ test('image reference capture, original, editing, collection, reload and logout'
   const base = 'http://127.0.0.1:24568', username = 'media_' + randomUUID().slice(0, 8), password = 'media-browser-password-123'
   expect((await request.post(base + '/api/auth/register', { data: { username, password }, headers: { Origin: base } })).status()).toBe(201)
   await page.goto('/knowledge')
-  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await page.getByRole('button', { name: '登录 / 注册', exact: true }).click()
   await page.getByLabel('用户名', { exact: true }).fill(username); await page.getByLabel('密码', { exact: true }).fill(password)
   await page.getByRole('dialog').getByRole('button', { name: '登录', exact: true }).click()
   await expect(page.getByRole('button', { name: username })).toBeVisible()

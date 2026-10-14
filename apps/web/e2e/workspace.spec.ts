@@ -14,7 +14,7 @@ test.beforeAll(async () => {
 })
 async function login(page: Page) {
   await page.goto('/knowledge')
-  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await page.getByRole('button', { name: '登录 / 注册', exact: true }).click()
   await page.getByLabel('用户名', { exact: true }).fill(username)
   await page.getByLabel('密码', { exact: true }).fill(password)
   await page.getByRole('dialog').getByRole('button', { name: '登录', exact: true }).click()
@@ -124,7 +124,7 @@ test('four actual pages, mobile navigation, failure recovery and cache isolation
   await expect(page.getByText('这里还没有卡片')).toBeVisible()
   await page.goto('/settings')
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
-  await expect(page.locator('.account-trigger')).toHaveText('登录')
+  await expect(page.locator('.account-trigger')).toHaveCount(0)
   await expect(page.locator(`a[href='/knowledge/cards/${knowledgeId}']`)).toHaveCount(0)
   await page.goto(`/knowledge/cards/${knowledgeId}`)
   await expect(page.getByText('演示空间 · 只读')).toBeVisible()

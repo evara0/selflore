@@ -82,7 +82,7 @@ test('login removes samples and expired session removes private profile from the
   }))
   render(<App/>)
   await screen.findByRole('link', { name: '主动回忆为什么有效？' })
-  fireEvent.click(screen.getByRole('button', { name: '登录' }))
+  fireEvent.click(screen.getByRole('button', { name: '登录 / 注册' }))
   fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'privateuser' } })
   fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'long-password-123' } })
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '登录' }))
