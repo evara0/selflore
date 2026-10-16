@@ -41,7 +41,7 @@ for (const authenticated of [false, true]) {
     const create = navigation.getByRole('link', { name: '新建', exact: true })
     await expect(create).toBeVisible()
     await expect(page.getByRole('link', { name: '主动回忆为什么有效？', exact: true })).toBeVisible()
-    await expect(navigation.getByRole('link').locator('span:not([aria-hidden])')).toHaveText(['知识', '观点', '新建', '合集', '我的'])
+    await expect(navigation.getByRole('link').locator('span:not([aria-hidden])')).toHaveText(['卡片', '备忘', '新建', '合集', '我的'])
     await expect(page.locator('.header-actions .create-action')).toBeHidden()
 
     for (const width of [320, 390, 600]) {
@@ -75,7 +75,7 @@ for (const authenticated of [false, true]) {
       await page.getByLabel('问题', { exact: true }).fill('如何从移动端新建？')
       await page.getByLabel('答案', { exact: true }).fill('点击底栏中央的新建入口。')
       await page.getByRole('button', { name: '保存卡片', exact: true }).tap()
-      await expect(page).toHaveURL(new RegExp(`/knowledge/cards/${demoId(999)}$`))
+      await expect(page).toHaveURL(new RegExp(`/cards/${demoId(999)}$`))
       await expect(page.getByRole('heading', { name: '移动底栏创建的知识' })).toBeVisible()
       expect(writes).toEqual(['/cards'])
     } else {
@@ -86,9 +86,9 @@ for (const authenticated of [false, true]) {
       await page.getByRole('button', { name: '关闭登录窗口' }).tap()
     }
 
-    for (const [label, path] of [['知识', '/knowledge'], ['观点', '/opinions'], ['合集', '/collections'], ['我的', '/me']]) {
+    for (const [label, path] of [['卡片', '/cards'], ['备忘', '/memos'], ['合集', '/collections'], ['我的', '/me']]) {
       await navigation.getByRole('link', { name: label, exact: true }).tap()
-      await expect(page).toHaveURL(new RegExp(`${path}$`))
+      await expect(page).toHaveURL(new RegExp(`${path}(?:\\?.*)?$`))
       await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveAttribute('aria-current', 'page')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     }

@@ -18,6 +18,7 @@ SELECT="""SELECT c.*,
   WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='opinion') AS opinion_count
  ,(SELECT count(*) FROM app.collection_items i JOIN app.cards x ON x.owner_id=i.owner_id AND x.id=i.card_id
   WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='reference') AS reference_count
+ ,(SELECT count(*) FROM app.collection_items i JOIN app.cards x ON x.owner_id=i.owner_id AND x.id=i.card_id WHERE i.owner_id=c.owner_id AND i.collection_id=c.id AND x.kind='memo') AS memo_count
  FROM app.collections c"""
 
 

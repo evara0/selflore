@@ -14,7 +14,7 @@ from app.schemas.workspace import CardContent
 from app.services.content import references, cloze_indices
 from app.services.scheduling import fresh, VERSION
 
-FIELDS = ('kind','form','title','question_md','answer_md','body_md','note_md','source_title','source_url','source_locator','source_author','source_publisher','source_platform','source_published_on','processing_state','is_bookmarked')
+FIELDS = ('memo_format','kind','form','title','question_md','answer_md','body_md','note_md','source_title','source_url','source_locator','source_author','source_publisher','source_platform','source_published_on','processing_state','is_bookmarked')
 SELECT = """SELECT c.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
       FROM app.card_tags ct JOIN app.tags t ON t.owner_id=ct.owner_id AND t.id=ct.tag_id
@@ -22,8 +22,8 @@ SELECT = """SELECT c.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
       FROM app.card_topics ct JOIN app.topics t ON t.owner_id=ct.owner_id AND t.id=ct.topic_id
       WHERE ct.owner_id=c.owner_id AND ct.card_id=c.id),'[]'::jsonb) AS topics,
-    (SELECT count(DISTINCT target_card_id) FROM app.card_links l WHERE l.owner_id=c.owner_id AND l.source_card_id=c.id) AS link_count,
-    (SELECT count(DISTINCT source_card_id) FROM app.card_links l WHERE l.owner_id=c.owner_id AND l.target_card_id=c.id) AS backlink_count
+    (SELECT count(DISTINCT target_card_id) FROM app.all_card_links l WHERE l.owner_id=c.owner_id AND l.source_card_id=c.id) AS link_count,
+    (SELECT count(DISTINCT source_card_id) FROM app.all_card_links l WHERE l.owner_id=c.owner_id AND l.target_card_id=c.id) AS backlink_count
     FROM app.cards c"""
 
 
@@ -37,7 +37,8 @@ def event(db, owner, kind, row, *, collection=False, now=None):
 
 
 def search_text(row, code):
-    return '\n'.join(str(row.get(key) or '') for key in ('title','question_md','answer_md','body_md','note_md','source_title','source_locator','source_author','source_publisher','source_platform')) + '\n' + code
+    item_text = '\n'.join(str(item.get('text','')) for item in row.get('memo_items',[]))
+    return item_text + '\n' + '\n'.join(str(row.get(key) or '') for key in ('title','question_md','answer_md','body_md','note_md','source_title','source_locator','source_author','source_publisher','source_platform')) + '\n' + code
 
 
 def public(row, *, summary=False):
@@ -65,6 +66,9 @@ def detail(db, owner, card_id):
         fail(404,'not_found','对象不存在或不可用')
     result = public(row)
     result['attachments'] = attachment_links(db, owner, card_id)
+    from app.services import memos
+    result['memo_items'] = memos.items(db,owner,card_id) if row['kind']=='memo' else []
+    result['memo_progress'] = {'total':len(result['memo_items']),'completed':sum(i['is_completed'] for i in result['memo_items'])}
     return result
 
 
@@ -75,11 +79,11 @@ def attachment_links(db, owner, card_id):
         WHERE ca.owner_id=%s AND ca.card_id=%s ORDER BY ca.position''', (owner,card_id))
 
 
-def list_cards(db, owner, *, kind=None, kinds=None, q=None, topic_id=None, tag_id=None, lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
+def list_cards(db, owner, *, kind=None, kinds=None, memo_format=None, q=None, topic_id=None, tag_id=None, lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
     conditions, values = ['c.owner_id=%s','c.lifecycle=%s'], [owner,lifecycle]
     if kinds:
         conditions.append('c.kind=ANY(%s::text[])'); values.append(kinds)
-    for key,value in (('kind',kind),('processing_state',processing_state),('is_bookmarked',is_bookmarked)):
+    for key,value in (('memo_format',memo_format),('kind',kind),('processing_state',processing_state),('is_bookmarked',is_bookmarked)):
         if value is not None:
             conditions.append(f'c.{key}=%s'); values.append(value)
     if q:
@@ -102,6 +106,8 @@ def list_cards(db, owner, *, kind=None, kinds=None, q=None, topic_id=None, tag_i
     items = []
     for row in rows:
         item = public(row,summary=True)
+        if row['kind']=='memo':
+            item['memo_progress']=one(db,'SELECT count(*) AS total,count(*) FILTER(WHERE is_completed) AS completed FROM app.memo_items WHERE owner_id=%s AND memo_card_id=%s',(owner,row['id']))
         item['attachments'] = attachment_links(db,owner,row['id'])[:1] if row['kind']=='reference' else []
         items.append(item)
     return {'items':items,'total':total,'limit':limit,'offset':offset}
@@ -169,6 +175,12 @@ def sync_units(db,owner,card_id,data):
 def create_card(db,owner,data):
     values=data.model_dump(); fingerprint=digest(data.model_dump(mode='json'))
     compatible={fingerprint}
+    if data.kind != 'memo' and values['memo_format'] is None and not values['memo_items']:
+        previous={k:v for k,v in data.model_dump(mode='json').items() if k not in ('memo_format','memo_items')}
+        compatible.add(digest(previous))
+        extensions=('note_md','attachments','source_author','source_publisher','source_platform','source_published_on')
+        if data.kind in ('knowledge','opinion') and all(previous.get(k) in (None,'',[]) for k in extensions):
+            compatible.add(digest({k:v for k,v in previous.items() if k not in extensions}))
     # Existing creation digests must remain unchanged across the additive schema upgrade.
     extensions=('note_md','attachments','source_author','source_publisher','source_platform','source_published_on')
     if data.kind in ('knowledge','opinion') and all(values[key] in (None,'',[]) for key in extensions):
@@ -184,8 +196,10 @@ def create_card(db,owner,data):
             columns=('id','owner_id','code',*FIELDS,'search_text','client_request_id','creation_request_digest')
             params=(entity_id,owner,code,*(values[key] for key in FIELDS),search_text(values,code),data.client_request_id,fingerprint)
             run(db,'INSERT INTO app.cards('+','.join(columns)+') VALUES('+','.join(['%s']*len(params))+')',params)
+            from app.services import memos
+            memos.sync(db,owner,entity_id,data)
             relations(db,owner,entity_id,data); sync_units(db,owner,entity_id,data)
-            event(db,owner,'card_created',{'id':entity_id,'title':data.title})
+            event(db,owner,'memo_created' if data.kind=='memo' else 'card_created',{'id':entity_id,'title':data.title})
     except psycopg.errors.UniqueViolation:
         old=one(db,'SELECT id,creation_request_digest FROM app.cards WHERE owner_id=%s AND client_request_id=%s',(owner,data.client_request_id))
         if not old or old['creation_request_digest'] not in compatible: fail(409,'request_conflict','创建请求冲突，请重试')
@@ -197,8 +211,11 @@ def edit_card(db,owner,card_id,patch):
     with db.transaction():
         row=owned(db,'cards',owner,card_id,lock=True); revision(row,patch.expected_revision)
         before=detail(db,owner,card_id)
+        from app.services import memos
+        if row['kind']=='memo' and row['lifecycle']!='active': fail(409,'memo_unavailable','请先恢复备忘再编辑')
         payload={key:before[key] for key in CardContent.model_fields if key in before}
         payload['attachments']=[{key:item.get(key) for key in ('id','caption','alt_text','creator_name')} for item in before['attachments']]
+        payload['memo_items']=memos.inputs(before['memo_items'])
         original=CardContent.model_validate(payload).model_dump(mode='json')
         payload.update(patch.model_dump(exclude_unset=True,exclude={'expected_revision'}))
         try:
@@ -210,9 +227,13 @@ def edit_card(db,owner,card_id,patch):
             return before
         run(db,'UPDATE app.cards SET '+','.join(key+'=%s' for key in FIELDS)+',search_text=%s,revision=revision+1,updated_at=now() WHERE owner_id=%s AND id=%s',
             (*(values[key] for key in FIELDS),search_text(values,row['code']),owner,card_id))
+        memos.sync(db,owner,card_id,data)
         relations(db,owner,card_id,data); sync_units(db,owner,card_id,data)
         content_changed=any(before.get(k)!=values.get(k) for k in ('body_md','note_md','question_md','answer_md')) or original['attachments']!=data.model_dump(mode='json')['attachments']
-        event(db,owner,'card_updated' if content_changed else 'card_organized',{'id':card_id,'title':data.title})
+        if row['kind']=='memo':
+            content_changed=content_changed or original['memo_items']!=data.model_dump(mode='json')['memo_items']
+        event_kind=('memo_updated' if content_changed else 'memo_organized') if row['kind']=='memo' else ('card_updated' if content_changed else 'card_organized')
+        event(db,owner,event_kind,{'id':card_id,'title':data.title})
     return detail(db,owner,card_id)
 
 
@@ -230,8 +251,9 @@ def link_list(db,owner,card_id):
     owned(db,'cards',owner,card_id)
     def fetch(direction):
         field,other=('source_card_id','target_card_id') if direction=='outgoing' else ('target_card_id','source_card_id')
-        rows=many(db,f'''SELECT c.id,c.title,c.kind,c.code,c.lifecycle,array_agg(DISTINCT l.origin) AS origins
-          FROM app.card_links l JOIN app.cards c ON c.owner_id=l.owner_id AND c.id=l.{other}
+        rows=many(db,f'''SELECT c.id,c.title,c.kind,c.code,c.lifecycle,array_agg(DISTINCT l.origin) AS origins,
+          COALESCE(jsonb_agg(DISTINCT jsonb_build_object('item_id',l.item_id,'memo_card_id',l.source_card_id)) FILTER(WHERE l.item_id IS NOT NULL),'[]'::jsonb) AS item_links
+          FROM app.all_card_links l JOIN app.cards c ON c.owner_id=l.owner_id AND c.id=l.{other}
           WHERE l.owner_id=%s AND l.{field}=%s GROUP BY c.id ORDER BY c.title''',(owner,card_id))
         return rows
     return {'outgoing':fetch('outgoing'),'incoming':fetch('incoming')}
@@ -241,11 +263,12 @@ def manual_link(db,owner,card_id,target,expected,remove=False):
     with db.transaction():
         row=owned(db,'cards',owner,card_id,lock=True); revision(row,expected)
         owned(db,'cards',owner,target)
+        if row['kind']=='memo' and row['lifecycle']!='active': fail(409,'memo_unavailable','请先恢复备忘')
         if card_id==target: fail(422,'self_link','不能链接卡片自身')
         if remove:
             run(db,"DELETE FROM app.card_links WHERE owner_id=%s AND source_card_id=%s AND target_card_id=%s AND origin='manual'",(owner,card_id,target))
         else:
             run(db,"INSERT INTO app.card_links(owner_id,source_card_id,target_card_id,origin) VALUES(%s,%s,%s,'manual') ON CONFLICT DO NOTHING",(owner,card_id,target))
         run(db,'UPDATE app.cards SET revision=revision+1,updated_at=now() WHERE owner_id=%s AND id=%s',(owner,card_id))
-        event(db,owner,'card_organized',row)
+        event(db,owner,'memo_organized' if row['kind']=='memo' else 'card_organized',row)
     return detail(db,owner,card_id)

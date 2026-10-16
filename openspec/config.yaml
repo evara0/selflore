@@ -5,6 +5,17 @@ context: |
   All artifacts must be written in zh-CN.
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
 
+rules:
+  tasks:
+    - "影响前端展示的变更必须包含视觉验收任务：确定受影响页面和状态，在真实浏览器截图并实际查看，处理发现的问题，复测并记录证据与未覆盖范围；仅Vitest、build或无横向溢出不代表视觉通过。"
+    - "视觉验收遵守项目根AGENTS.md和apps/api/WORKSPACE_TESTING.md的前端视觉审查章节；默认320、390、1280像素，按共享组件／全局样式影响面扩大覆盖。无展示影响时记录不适用及原因，不为流程而运行完整业务环境。"
+
+operations:
+  apply:
+    guidance:
+      - "完成影响前端展示的变更前，按AGENTS.md与apps/api/WORKSPACE_TESTING.md执行前端视觉审查；必须实际查看截图，并区分自动测试、截图生成、截图查看和视觉结论。"
+      - "修复视觉问题后重新构建并复测受影响范围，展示代码再改时更新证据。未解决问题或未检查页面不得宣称视觉通过；纯审查只记录发现，不扩大修复范围；无展示影响则说明不适用。此指导不等同Hook自动门禁或图像评分。"
+
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
 # Example:

@@ -19,8 +19,24 @@ class AttachmentLink(Input):
     creator_name: str | None = Field(default=None, max_length=200)
 
 
+class MemoItem(Input):
+    id: UUID
+    text: str = Field(min_length=1, max_length=2000)
+    is_completed: bool = False
+    target_ids: list[UUID] = Field(default_factory=list, max_length=20)
+
+    @field_validator('target_ids')
+    @classmethod
+    def unique_targets(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError('关联不能重复')
+        return value
+
+
 class CardContent(Input):
-    kind: Literal['knowledge', 'opinion', 'reference']
+    kind: Literal['knowledge', 'opinion', 'reference', 'memo']
+    memo_format: Literal['note', 'checklist'] | None = None
+    memo_items: list[MemoItem] = Field(default_factory=list, max_length=200)
     form: Literal['qa', 'cloze'] | None = None
     title: str = Field(min_length=1, max_length=200)
     question_md: str | None = None
@@ -56,6 +72,17 @@ class CardContent(Input):
 
     @model_validator(mode='after')
     def valid_content(self):
+        if len(set(self.tag_ids))!=len(self.tag_ids): raise ValueError('标签不能重复')
+        if self.kind == 'memo':
+            if self.memo_format is None or self.form is not None or self.question_md is not None or self.answer_md is not None or self.note_md is not None or self.attachments or self.topic_ids:
+                raise ValueError('备忘形式或内容不合法')
+            if (self.memo_format == 'checklist') != bool(self.memo_items):
+                raise ValueError('清单至少一项，普通备忘不使用条目')
+            if len({item.id for item in self.memo_items}) != len(self.memo_items):
+                raise ValueError('条目不能重复')
+            return self
+        if self.memo_format is not None or self.memo_items:
+            raise ValueError('只有备忘支持条目和备忘形式')
         if len(set(self.topic_ids)) != len(self.topic_ids) or len(set(self.tag_ids)) != len(self.tag_ids):
             raise ValueError('分类或标签不能重复')
         if len({item.id for item in self.attachments}) != len(self.attachments):
@@ -91,6 +118,7 @@ class CardCreate(CardContent):
 
 class CardPatch(Input):
     expected_revision: int = Field(ge=1)
+    memo_items: list[MemoItem] | None = Field(default=None, max_length=200)
     title: str | None = Field(default=None, min_length=1, max_length=200)
     question_md: str | None = None
     answer_md: str | None = None
@@ -108,6 +136,16 @@ class CardPatch(Input):
     tag_ids: list[UUID] | None = None
     processing_state: Literal['inbox', 'organized'] | None = None
     is_bookmarked: bool | None = None
+
+
+class MemoCompletion(Input):
+    expected_revision: int = Field(ge=1)
+    is_completed: bool
+
+
+class MemoOrder(Input):
+    expected_revision: int = Field(ge=1)
+    item_ids: list[UUID] = Field(min_length=1, max_length=200)
 
 
 class Revision(Input):

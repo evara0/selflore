@@ -1,28 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useApi, useData, useRefresh, cardUrl, clozeText, ApiError, type Card, type Collection, type Attachment } from '../../lib/workspace'
 import { Markdown, PageHeading, QueryState } from '../../components/Common'
 import { ImageUploader, type ImageUploaderHandle } from '../../components/ImageUploader'
 import { AttachmentGallery } from '../../components/Attachments'
 import { CardPicker, Labels } from '../../components/Selectors'
 
+import { useUnsaved } from '../../components/useUnsaved'
+import MemoEditor from './MemoEditor'
 import { cardInk } from '../../lib/theme'
 
-function useUnsaved(dirty: boolean) {
-  const saved = useRef(false)
-  const blocker = useBlocker(() => dirty && !saved.current)
-  useEffect(() => { if (blocker.state === 'blocked') { if (window.confirm('内容尚未保存，确定离开？')) blocker.proceed(); else blocker.reset() } }, [blocker])
-  useEffect(() => {
-    function unload(e: BeforeUnloadEvent) { if (dirty && !saved.current) { e.preventDefault(); e.returnValue = '' } }
-    window.addEventListener('beforeunload', unload)
-    return () => window.removeEventListener('beforeunload', unload)
-  }, [dirty])
-  return () => { saved.current = true }
-}
 export default function Editor() {
   const { id } = useParams(), [search] = useSearchParams()
   const query = useData<Card>(`/cards/${id}`, !!id)
-  if (id) return <QueryState query={query}>{query.data && <CardForm key={id} original={query.data}/>}</QueryState>
+  if (id) return <QueryState query={query}>{query.data && (query.data.kind === 'memo' ? <MemoEditor key={id} original={query.data}/> : <CardForm key={id} original={query.data}/>)}</QueryState>
+  if (search.get('kind') === 'memo') return <MemoEditor key={search.get('memo_format') || 'note'}/>
   return <CardForm key={search.get('kind') || 'knowledge'} initialKind={search.get('kind') || 'knowledge'}/>
 }
 function CardForm({ original, initialKind = 'knowledge' }: { original?: Card; initialKind?: string }) {
@@ -53,7 +45,7 @@ function CardForm({ original, initialKind = 'knowledge' }: { original?: Card; in
   }
   async function resolve() { const current = await api<Card>(`/cards/${original!.id}`); setRevision(current.revision); setConflict(false); setMessage('已读取最新版本号，你的输入仍保留。请核对最新内容后再保存。'); }
   return <><PageHeading title={original ? '编辑卡片' : '新建卡片'}><Link to="/collections/new">新建合集 ↗</Link></PageHeading><form className="editor panel" data-card-ink={cardInk(original?.id)} onSubmit={e => void save(e)} onChange={() => setDirty(true)} onPaste={e => { if (kind === 'reference' && !e.defaultPrevented && e.clipboardData.files.length) { e.preventDefault(); uploader.current?.addFiles([...e.clipboardData.files]); setDirty(true) } }}>
-    <div className="editor-main"><div className="segmented">{['knowledge', 'opinion', 'reference'].map(k => <button type="button" key={k} disabled={!!original} className={kind === k ? 'selected' : ''} onClick={() => { setKind(k); setTopics([]); setDirty(true) }}>{k === 'knowledge' ? '事实知识' : k === 'reference' ? '资料卡' : '观点'}</button>)}</div>
+    <div className="editor-main"><div className="segmented">{['knowledge', 'opinion', 'reference'].map(k => <button type="button" key={k} disabled={!!original} className={kind === k ? 'selected' : ''} onClick={() => { setKind(k); setTopics([]); setDirty(true) }}>{k === 'knowledge' ? '事实知识' : k === 'reference' ? '资料卡' : '观点'}</button>)}<Link to="/new?kind=memo">备忘 / 清单</Link></div>
     <label>标题<input required maxLength={200} value={title} placeholder="给这张卡片一个清晰的标题" onChange={e => setTitle(e.target.value)}/></label>
     {kind === 'knowledge' && <label>卡片形式<select disabled={!!original} value={form} onChange={e => setForm(e.target.value as 'qa' | 'cloze')}><option value="qa">问答卡片</option><option value="cloze">填空卡片</option></select></label>}
     {kind === 'knowledge' && form === 'qa' ? <><label>问题<textarea required value={question} onChange={e => setQuestion(e.target.value)} rows={4}/></label><label>答案<textarea required value={answer} onChange={e => setAnswer(e.target.value)} rows={6}/></label></> : <label>{kind === 'opinion' ? '观点正文' : kind === 'reference' ? '原始摘录' : '填空正文'}<textarea required={kind !== 'reference'} value={body} onChange={e => setBody(e.target.value)} rows={12} placeholder={kind === 'opinion' ? '一次只说一个想法。支持 Markdown。' : kind === 'reference' ? '可粘贴原文摘录；上传图片时可留空。' : '例如：主动回忆比 {{c1::重复阅读::学习方式}} 更有效。'}/></label>}
@@ -61,7 +53,7 @@ function CardForm({ original, initialKind = 'knowledge' }: { original?: Card; in
     {(kind === 'opinion' || kind === 'reference') && <><button type="button" onClick={() => setPicker(!picker)}>＋ 插入卡片引用</button>{picker && <CardPicker excluded={original ? [original.id] : []} onSelect={c => { if (kind === 'reference') setNote(note + `\n[[${c.id}|${c.title}]]`); else setBody(body + `\n[[${c.id}|${c.title}]]`); setPicker(false); setDirty(true) }}/>}</>}
     <details><summary>内容预览</summary><Markdown text={kind === 'knowledge' && form === 'qa' ? question + '\n\n---\n\n' + answer : form === 'cloze' && kind === 'knowledge' ? clozeText(body, false) : body}/>{kind === 'reference' && <><AttachmentGallery attachments={images}/><Markdown text={note}/></>}</details>
     <p role="status" className="error-text">{message}</p>{conflict && <div className="conflict"><p>服务器内容已变化。<Link to={cardUrl(original!)} target="_blank">在新窗口查看最新内容</Link></p><button type="button" onClick={() => void resolve()}>核对后使用最新版本号</button></div>}
-    <div className="form-footer"><Link to={original ? cardUrl(original) : '/knowledge'}>取消</Link><button className="primary" type="submit" disabled={pending || uploadBusy}>{pending ? '保存中…' : '保存卡片'}</button></div></div>
+    <div className="form-footer"><Link to={original ? cardUrl(original) : '/cards'}>取消</Link><button className="primary" type="submit" disabled={pending || uploadBusy}>{pending ? '保存中…' : '保存卡片'}</button></div></div>
     <aside className="editor-side"><h3>组织与来源</h3><Labels kind={kind} topics={topics} tags={tags} onChange={(t, g) => { setTopics(t); setTags(g); setDirty(true) }}/><label>来源标题<input value={sourceTitle} maxLength={200} onChange={e => setSourceTitle(e.target.value)}/></label><label>来源链接<input type="url" value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://"/></label><label>页码 / 定位<input value={locator} maxLength={200} onChange={e => setLocator(e.target.value)}/></label><label>来源作者<input value={author} maxLength={200} onChange={e => setAuthor(e.target.value)}/></label><label>发布／转载者<input value={publisher} maxLength={200} onChange={e => setPublisher(e.target.value)}/></label><label>来源平台<input value={platform} maxLength={80} onChange={e => setPlatform(e.target.value)}/></label><label>发布日期<input type="date" value={published} onChange={e => setPublished(e.target.value)}/></label><p className="muted">未知来源可留空。引用使用稳定 ID。修改标题后，连接仍然存在。</p></aside></form></>
 }
 export function CollectionEditor() {

@@ -39,7 +39,7 @@ function knowledgeFetch() {
   }))
 }
 test('knowledge hides answers until an explicit keyboard or touch action and labels real units', async () => {
-  knowledgeFetch(); mount(<Knowledge/>)
+  knowledgeFetch(); mount(<Knowledge/>, '/cards?type=knowledge')
   await screen.findByRole('link', { name: '主动回忆' })
   expect(screen.queryByText('独立于列表的真实答案')).toBeNull()
   const reveal = screen.getByRole('button', { name: /查看答案/ }); reveal.focus(); expect(document.activeElement).toBe(reveal)

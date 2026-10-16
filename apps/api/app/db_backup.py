@@ -199,7 +199,9 @@ def verify_app(database: str, password: str) -> dict:
         if connection.execute('SELECT current_user,current_database(),inet_server_port()').fetchone() != (APP, database, RESTORE_PORT):
             raise BackupError('恢复应用读取身份不符。')
         counts = {}
-        for table in ('users','auth_sessions','user_profiles','cards','card_links','collections','collection_items','review_units','review_states','review_logs'):
+        for table in ('users','auth_sessions','user_profiles','cards','card_links','memo_items','memo_item_links','collections','collection_items','review_units','review_states','review_logs'):
+            if table in ('memo_items','memo_item_links') and connection.execute('SELECT to_regclass(%s)',('app.'+table,)).fetchone()[0] is None:
+                continue  # Restoring an older backup must not require a later migration.
             counts[table] = connection.execute(sql.SQL('SELECT count(*) FROM app.{}').format(sql.Identifier(table))).fetchone()[0]
         restricted = connection.execute("SELECT has_schema_privilege(current_user,'app','CREATE'),has_table_privilege(current_user,'app.cards','TRUNCATE'),has_table_privilege(current_user,'app.schema_migrations','SELECT'),has_table_privilege(current_user,'app.review_logs','UPDATE')").fetchone()
         if restricted != (False,False,False,False):

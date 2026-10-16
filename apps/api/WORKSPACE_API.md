@@ -47,6 +47,24 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 完整字段约束可见运行服务的 `/docs` 与 `app/schemas/workspace.py`。表结构和迁移见 [CARD_MIGRATIONS.md](CARD_MIGRATIONS.md)。
 
 ## 资料卡与附件
+## 备忘与清单
+
+kind=memo、form=null，memo_format为note或checklist，创建后不可变。标题必填，正文body_md可空；note只需标题，checklist需要1–200个memo_items。条目输入为id（客户端生成的稳定UUID）、text（去空白后1–2000字符）、is_completed、target_ids（最多20个本人卡片）。顺序由输入数组决定。备忘不能包含附件、分类或知识问答字段；标签和来源可选。
+
+PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，显式数组按稳定ID整体更新，未改完成状态时保留服务器完成时间。创建仍使用client_request_id幂等重试。详情返回memo_items及派生memo_progress。
+
+| 接口 | 行为 |
+| --- | --- |
+| GET /api/cards?kind=memo&memo_format=checklist | 按形式分页搜索，条目文字参与父卡片搜索 |
+| GET /api/memo-items?is_completed=false&q=关键词 | 直接分页事项，返回父卡片ID、标题、修订和目标信息 |
+| PATCH /api/cards/{id}/memo-items/{item_id} | expected_revision与is_completed显式目标状态；完成时间由服务器写入，撤销清空 |
+| PUT /api/cards/{id}/memo-items/order | expected_revision和包含所有条目恰好一次的item_ids |
+
+父修订冲突返回409；同修订且同完成状态不重复写活动。归档或回收站备忘不能编辑或勾选，恢复保留原条目和时间。链接合并正文、手动及条目来源，按目标去重并保留条目定位。合集中的清单只读；备忘有独立积累与活动，不增加复习单元、掌握数或学习连续天数。
+
+页面规范地址为/cards、/cards/:id、/memos和/memos/:id；原/knowledge、知识及资料详情、/opinions?card=地址保留适配。四主导航为卡片、备忘、合集、我的。
+
+## 资料卡与附件
 
 `kind=reference`，`form=null`，`body_md`为原始摘录，`note_md`为个人说明；原始摘录或至少一个ready附件必需。来源扩展为source_author、source_publisher、source_platform、source_published_on。`attachments`为包含id、caption、alt_text、creator_name的有序数组，每卡最多10图；PATCH用expected_revision整组原子替换。
 

@@ -29,7 +29,7 @@ test('guest cards hide answers, filter locally and gate bookmark without any wri
   // The first lazy route import can exceed the default one-second wait on Windows.
   await screen.findByRole('link', { name: '主动回忆为什么有效？' }, { timeout: 5000 })
   expect(screen.queryByText(/主动回忆是先不看材料/)).toBeNull()
-  fireEvent.change(screen.getByLabelText('搜索知识'), { target: { value: '主动回忆为什么' } })
+  fireEvent.change(screen.getByLabelText('搜索卡片'), { target: { value: '主动回忆为什么' } })
   await waitFor(() => expect(screen.getAllByRole('button', { name: /查看答案/ })).toHaveLength(1))
   fireEvent.click(screen.getByRole('button', { name: /查看答案/ }))
   expect(await screen.findByText(/主动回忆是先不看材料/)).toBeTruthy()
@@ -53,7 +53,7 @@ test('guest reader resets revealed answers and navigation follows stable opinion
   fireEvent.click(screen.getByRole('button', { name: '下一张 →' }))
   await screen.findByRole('heading', { name: '解释一个概念时卡住了' })
   fireEvent.click((await screen.findAllByRole('link', { name: '主动回忆为什么有效？' }))[0])
-  await waitFor(() => expect(location.pathname).toBe(`/knowledge/cards/${demoId(1)}`))
+  await waitFor(() => expect(location.pathname).toBe(`/cards/${demoId(1)}`))
   expect(screen.queryByText(/主动回忆是先不看材料/)).toBeNull()
   expect(calls.every(c => c.startsWith('GET /api/auth/'))).toBe(true)
 })

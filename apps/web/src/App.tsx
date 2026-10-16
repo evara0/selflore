@@ -1,15 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { createBrowserRouter, RouterProvider, Link, NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Link, NavLink, Navigate, Route, Routes, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Identity, request, useIdentity, type Session } from './lib/workspace'
 import { Icon } from './components/Common'
 import { registrationRules, usernamePattern, validUsername, validateRegistration, type RegistrationField } from './lib/registration'
+import { legacyList } from './lib/card-navigation'
 import BuilderLinks from './components/BuilderLinks'
 import './App.css'
 
 const Knowledge = lazy(() => import('./features/knowledge/Knowledge'))
 const Review = lazy(() => import('./features/knowledge/Review'))
-const Opinions = lazy(() => import('./features/opinions/Opinions'))
+const Memos = lazy(() => import('./features/cards/Memos'))
 const Collections = lazy(() => import('./features/collections/Collections'))
 const Profile = lazy(() => import('./features/profile/Profile'))
 const Editor = lazy(() => import('./features/cards/Editor'))
@@ -25,7 +26,7 @@ export default function App() {
   return <QueryClientProvider client={cache}><RouterProvider router={router}/></QueryClientProvider>
 }
 function Workspace({ cache }: { cache: QueryClient }) {
-  const navigate = useNavigate()
+  const navigate = useNavigate(), location = useLocation()
   const [session, setSession] = useState<Session | null>(null), [loading, setLoading] = useState(true)
   const [registration, setRegistration] = useState(false), [open, setOpen] = useState(false), [mode, setMode] = useState('login')
   const [username, setUsername] = useState(''), [password, setPassword] = useState(''), [confirmation, setConfirmation] = useState(''), [message, setMessage] = useState(''), [pending, setPending] = useState(false)
@@ -58,18 +59,18 @@ function Workspace({ cache }: { cache: QueryClient }) {
   useEffect(() => { if (open && !dialog.current?.open) dialog.current?.showModal(); if (!open && dialog.current?.open) dialog.current.close() }, [open])
   const openLogin = useCallback(() => { setTouched({}); setMessage(''); setMode('login'); setOpen(true) }, [])
   function protectedPage(element: ReactNode) { return session ? element : <GuestGate/> }
-  async function logout() { if (!session) return; try { await request('/auth/logout', 'POST', undefined, session.csrf_token); navigate('/knowledge'); await clearSession(); setOpen(false) } catch (error) { setMessage((error as Error).message) } }
+  async function logout() { if (!session) return; try { await request('/auth/logout', 'POST', undefined, session.csrf_token); navigate('/cards'); await clearSession(); setOpen(false) } catch (error) { setMessage((error as Error).message) } }
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!valid || submitting.current) return
     submitting.current = true; setPending(true); setMessage('')
-    try { await request('/auth/' + mode, 'POST', { username, password }); setPassword(''); setConfirmation(''); setTouched({}); if (mode === 'register') { setMode('login'); setMessage('注册成功，请登录。') } else { await refresh(); setOpen(false); setUsername(''); navigate('/knowledge') } }
+    try { await request('/auth/' + mode, 'POST', { username, password }); setPassword(''); setConfirmation(''); setTouched({}); if (mode === 'register') { setMode('login'); setMessage('注册成功，请登录。') } else { await refresh(); setOpen(false); setUsername(''); navigate('/cards') } }
     catch (error) { setMessage((error as Error).message) } finally { submitting.current = false; setPending(false) }
   }
-  const nav = [['/knowledge', '知识', 'book'], ['/opinions', '观点', 'pen'], ['/collections', '合集', 'grid'], ['/me', '我的', 'person']]
-  return <Identity value={{ session, guest: !loading && !session, openLogin, refresh }}><div className="site-shell"><header className="topbar"><div className="brand-area"><Link className="brand" to="/knowledge" aria-label="SelfLore 首页"><img className="brand-symbol" src="/favicon.svg" alt=""/><b>SelfLore<span>个人卡片笔记</span></b></Link><div className="header-builder"><BuilderLinks/></div></div><nav className="desktop-nav" aria-label="主导航">{nav.map(([path, label, icon]) => <NavLink key={path} to={path}><Icon name={icon}/>{label}</NavLink>)}</nav><div className="header-actions"><Link className="button create-action" to="/new">＋ 新建</Link>{session && <button className="account-trigger" onClick={() => navigate('/settings')}><span className="mini-avatar">{session.username[0].toUpperCase()}</span><span>{session.username}</span></button>}</div></header><main className="canvas">{!loading && !session && <div className="demo-banner"><div><b>演示空间 · 只读</b><p>内容与统计均为示例。</p></div><button className="button" onClick={openLogin}>登录 / 注册</button></div>}{loading ? <div className="state" role="status">正在加载…</div> : <Suspense key={session?.id || 'guest'} fallback={<div className="state" role="status">正在加载页面…</div>}><Routes>
-    <Route path="/" element={<Navigate to="/knowledge" replace/>}/><Route path="/knowledge" element={<Knowledge/>}/><Route path="/knowledge/cards/:id" element={<DetailPage/>}/><Route path="/knowledge/references/:id" element={<DetailPage/>}/><Route path="/knowledge/review" element={protectedPage(<Review/>)}/><Route path="/opinions" element={<Opinions/>}/><Route path="/collections" element={<Collections/>}/><Route path="/collections/new" element={protectedPage(<CollectionEditor/>)}/><Route path="/collections/:id/edit" element={protectedPage(<CollectionEditor/>)}/><Route path="/collections/:id" element={<Collections/>}/><Route path="/me" element={<Profile/>}/><Route path="/new" element={protectedPage(<Editor/>)}/><Route path="/cards/:id/edit" element={protectedPage(<Editor/>)}/><Route path="/settings" element={protectedPage(<Account logout={logout}/>)}/><Route path="/admin/users" element={protectedPage(<AdminUsers/>)}/><Route path="/trash" element={protectedPage(<Trash/>)}/><Route path="*" element={<div className="state"><h1>页面不存在</h1><Link to="/knowledge">返回知识库</Link></div>}/>
-    </Routes></Suspense>}</main><nav className="mobile-nav" aria-label="移动端导航">{[...nav.slice(0, 2), ['/new', '新建', ''], ...nav.slice(2)].map(([path, label, icon]) => <NavLink key={path} to={path} className={path === '/new' ? 'mobile-create' : undefined}>{path === '/new' ? <span className="mobile-create-symbol" aria-hidden="true">＋</span> : <Icon name={icon}/>}<span>{label}</span></NavLink>)}</nav><footer className="site-footer"><span>SelfLore</span><BuilderLinks/></footer></div>
+  const nav = [['/cards', '卡片', 'card'], ['/memos', '备忘', 'pen'], ['/collections', '合集', 'grid'], ['/me', '我的', 'person']]
+  return <Identity value={{ session, guest: !loading && !session, openLogin, refresh }}><div className="site-shell"><header className="topbar"><div className="brand-area"><Link className="brand" to="/cards" aria-label="SelfLore 首页"><img className="brand-symbol" src="/favicon.svg" alt=""/><b>SelfLore<span>个人卡片笔记</span></b></Link><div className="header-builder"><BuilderLinks/></div></div><nav className="desktop-nav" aria-label="主导航">{nav.map(([path, label, icon]) => <NavLink key={path} to={path} className={({ isActive }) => isActive || (path === '/cards' && location.pathname.startsWith('/knowledge')) ? 'active' : undefined}><Icon name={icon}/>{label}</NavLink>)}</nav><div className="header-actions"><Link className="button create-action" to="/new">＋ 新建</Link>{session && <button className="account-trigger" onClick={() => navigate('/settings')}><span className="mini-avatar">{session.username[0].toUpperCase()}</span><span>{session.username}</span></button>}</div></header><main className="canvas">{!loading && !session && <div className="demo-banner"><div><b>演示空间 · 只读</b><p>内容与统计均为示例。</p></div><button className="button" onClick={openLogin}>登录 / 注册</button></div>}{loading ? <div className="state" role="status">正在加载…</div> : <Suspense key={session?.id || 'guest'} fallback={<div className="state" role="status">正在加载页面…</div>}><Routes>
+    <Route path="/" element={<Navigate to="/cards" replace/>}/><Route path="/cards" element={<Knowledge/>}/><Route path="/cards/:id" element={<DetailPage/>}/><Route path="/memos" element={<Memos/>}/><Route path="/memos/:id" element={<DetailPage/>}/><Route path="/memos/:id/edit" element={protectedPage(<Editor/>)}/><Route path="/knowledge" element={<LegacyList/>}/><Route path="/knowledge/cards/:id" element={<LegacyDetail/>}/><Route path="/knowledge/references/:id" element={<LegacyDetail/>}/><Route path="/knowledge/review" element={protectedPage(<Review/>)}/><Route path="/opinions" element={<LegacyList opinion/>}/><Route path="/collections" element={<Collections/>}/><Route path="/collections/new" element={protectedPage(<CollectionEditor/>)}/><Route path="/collections/:id/edit" element={protectedPage(<CollectionEditor/>)}/><Route path="/collections/:id" element={<Collections/>}/><Route path="/me" element={<Profile/>}/><Route path="/new" element={protectedPage(<Editor/>)}/><Route path="/cards/:id/edit" element={protectedPage(<Editor/>)}/><Route path="/settings" element={protectedPage(<Account logout={logout}/>)}/><Route path="/admin/users" element={protectedPage(<AdminUsers/>)}/><Route path="/trash" element={protectedPage(<Trash/>)}/><Route path="*" element={<div className="state"><h1>页面不存在</h1><Link to="/cards">返回卡片库</Link></div>}/>
+    </Routes></Suspense>}</main><nav className="mobile-nav" aria-label="移动端导航">{[...nav.slice(0, 2), ['/new', '新建', ''], ...nav.slice(2)].map(([path, label, icon]) => <NavLink key={path} to={path} className={({ isActive }) => path === '/new' ? 'mobile-create' : isActive || (path === '/cards' && location.pathname.startsWith('/knowledge')) ? 'active' : undefined}>{path === '/new' ? <span className="mobile-create-symbol" aria-hidden="true">＋</span> : <Icon name={icon}/>}<span>{label}</span></NavLink>)}</nav><footer className="site-footer"><span>SelfLore</span><BuilderLinks/></footer></div>
     <dialog className="auth-dialog" ref={dialog} aria-labelledby="auth-title" onClose={() => { setTouched({}); setOpen(false); setPassword(''); setConfirmation('') }} onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}>
       <div className="auth-head"><button aria-label="关闭登录窗口" onClick={() => setOpen(false)}>×</button></div>
       <h2 id="auth-title">{registering ? '注册' : '登录'}</h2>
@@ -83,6 +84,9 @@ function Workspace({ cache }: { cache: QueryClient }) {
       </form>
     </dialog></Identity>
 }
+
+function LegacyList({ opinion = false }: { opinion?: boolean }) { const location = useLocation(); return <Navigate replace to={legacyList(location.search, opinion)}/> }
+function LegacyDetail() { const { id } = useParams(); const location = useLocation(); return <Navigate replace to={'/cards/' + id + location.search}/> }
 
 function GuestGate() {
   const { openLogin } = useIdentity()

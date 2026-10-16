@@ -10,10 +10,10 @@ export function CardPicker({ onSelect, excluded = [] }: { onSelect: (card: Card)
 }
 
 export function Labels({ kind, topics, tags, onChange }: { kind: string; topics: string[]; tags: string[]; onChange: (topics: string[], tags: string[]) => void }) {
-  const topicQuery = useData<{ items: Label[] }>(`/topics?kind=${kind}`)
+  const topicQuery = useData<{ items: Label[] }>(`/topics?kind=${kind}`, kind !== 'memo')
   const tagQuery = useData<{ items: Label[] }>('/tags')
   const api = useApi(), refresh = useRefresh()
-  const [name, setName] = useState(''), [type, setType] = useState('topics'), [message, setMessage] = useState('')
+  const [name, setName] = useState(''), [type, setType] = useState(kind === 'memo' ? 'tags' : 'topics'), [message, setMessage] = useState('')
   async function create() {
     try { const label = await api<Label>(`/${type}`, 'POST', { name, ...(type === 'topics' ? { kind } : {}) }); setName(''); onChange(type === 'topics' ? kind !== 'opinion' ? [label.id] : [...topics, label.id] : topics, type === 'tags' ? [...tags, label.id] : tags); await refresh() }
     catch (e) { setMessage((e as Error).message) }
@@ -23,5 +23,5 @@ export function Labels({ kind, topics, tags, onChange }: { kind: string; topics:
     const next = selected.includes(id) ? selected.filter(v => v !== id) : isTopic && kind !== 'opinion' ? [id] : [...selected, id]
     onChange(isTopic ? next : topics, isTopic ? tags : next)
   }
-  return <div className="labels-editor"><span className="field-label">{kind !== 'opinion' ? '分类（最多一个）' : '主题'}</span><div className="choice-tags">{topicQuery.data?.items.map(t => <button type="button" className={topics.includes(t.id) ? 'selected' : ''} key={t.id} onClick={() => toggle(t.id, true)}>{t.name}</button>)}</div><span className="field-label">标签</span><div className="choice-tags">{tagQuery.data?.items.map(t => <button type="button" className={tags.includes(t.id) ? 'selected' : ''} key={t.id} onClick={() => toggle(t.id, false)}>{t.name}</button>)}</div><div className="inline-form"><select aria-label="新建分类或标签" value={type} onChange={e => setType(e.target.value)}><option value="topics">新分类 / 主题</option><option value="tags">新标签</option></select><input aria-label="分类或标签名称" value={name} maxLength={32} placeholder="名称" onChange={e => setName(e.target.value)}/><button type="button" disabled={!name.trim()} onClick={() => void create()}>添加</button></div><p role="status">{message}</p></div>
+  return <div className="labels-editor">{kind !== 'memo' && <><span className="field-label">{kind !== 'opinion' ? '分类（最多一个）' : '主题'}</span><div className="choice-tags">{topicQuery.data?.items.map(t => <button type="button" className={topics.includes(t.id) ? 'selected' : ''} key={t.id} onClick={() => toggle(t.id, true)}>{t.name}</button>)}</div></>}<span className="field-label">标签</span><div className="choice-tags">{tagQuery.data?.items.map(t => <button type="button" className={tags.includes(t.id) ? 'selected' : ''} key={t.id} onClick={() => toggle(t.id, false)}>{t.name}</button>)}</div><div className="inline-form"><select aria-label="新建分类或标签" value={type} onChange={e => setType(e.target.value)}>{kind !== 'memo' && <option value="topics">新分类 / 主题</option>}<option value="tags">新标签</option></select><input aria-label="分类或标签名称" value={name} maxLength={32} placeholder="名称" onChange={e => setName(e.target.value)}/><button type="button" disabled={!name.trim()} onClick={() => void create()}>添加</button></div><p role="status">{message}</p></div>
 }

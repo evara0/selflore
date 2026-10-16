@@ -48,7 +48,7 @@ test('image reference capture, original, editing, collection, reload and logout'
   await expect(page.getByLabel('图注 3')).toBeVisible()
   await page.getByLabel('图注 3').fill('拖入图')
   await page.getByRole('button', { name: '保存卡片', exact: true }).click()
-  await expect(page).toHaveURL(/knowledge\/references\//)
+  await expect(page).toHaveURL(/cards\//)
   const url = page.url(), id = url.split('/').pop()!
   await expect(page.getByRole('heading', { name: '原始材料' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '我的说明' })).toBeVisible()

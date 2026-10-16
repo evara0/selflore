@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.auth import get_db,get_settings,current_user,Settings,_origin,_csrf
 from app.repositories.workspace import one,many,run,fail
 from app.schemas.workspace import CardCreate,CardPatch,Lifecycle,Revision,TaxonomyCreate,TaxonomyPatch,CollectionCreate,CollectionPatch,Members,Order,RatingInput,ProfilePatch
-from app.services import cards,collections,reviews,profiles
+from app.services import cards,collections,reviews,profiles,memos
+from app.schemas.workspace import MemoCompletion, MemoOrder
 
 router=APIRouter(prefix='/api')
 Db=Annotated[psycopg.Connection,Depends(get_db)]
@@ -27,14 +28,15 @@ Offset=Annotated[int,Query(ge=0)]
 
 
 @router.get('/cards')
-def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference']|None=None,kinds:Annotated[str|None,Query(max_length=80)]=None,q:Annotated[str|None,Query(max_length=200)]=None,
+def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo']|None=None,kinds:Annotated[str|None,Query(max_length=80)]=None,q:Annotated[str|None,Query(max_length=200)]=None,memo_format:Literal['note','checklist']|None=None,
     topic_id:UUID|None=None,tag_id:UUID|None=None,lifecycle:Literal['active','archived','trashed']='active',
     processing_state:Literal['inbox','organized']|None=None,is_bookmarked:bool|None=None,
     sort:Literal['updated_desc','created_desc','code_asc','connections_desc']='updated_desc',limit:Limit=24,offset:Offset=0):
     selected = kinds.split(',') if kinds else None
-    if selected and (kind or len(selected)!=len(set(selected)) or any(k not in ('knowledge','opinion','reference') for k in selected)):
+    if selected and (kind or len(selected)!=len(set(selected)) or any(k not in ('knowledge','opinion','reference','memo') for k in selected)):
         fail(422,'invalid_kinds','请选择单一类型或有效类型集合')
-    return cards.list_cards(db,owner,kind=kind,kinds=selected,q=q,topic_id=topic_id,tag_id=tag_id,lifecycle=lifecycle,
+    if memo_format and kind!='memo': fail(422,'invalid_format','备忘形式需要备忘类型')
+    return cards.list_cards(db,owner,kind=kind,kinds=selected,memo_format=memo_format,q=q,topic_id=topic_id,tag_id=tag_id,lifecycle=lifecycle,
         processing_state=processing_state,is_bookmarked=is_bookmarked,sort=sort,limit=limit,offset=offset)
 
 
@@ -46,8 +48,23 @@ def card_create(body:CardCreate,db:Db,owner:Owner):
 @router.get('/cards/summary')
 def card_summary(db:Db,owner:Owner):
     return one(db,"""SELECT count(*) FILTER(WHERE kind='knowledge') AS knowledge,count(*) FILTER(WHERE kind='opinion') AS opinions,
-      count(*) FILTER(WHERE kind='reference') AS references,count(*) FILTER(WHERE processing_state='inbox') AS inbox,count(*) FILTER(WHERE is_bookmarked) AS bookmarked
+      count(*) FILTER(WHERE kind='reference') AS references,count(*) FILTER(WHERE kind='memo') AS memos,count(*) FILTER(WHERE kind<>'memo' AND processing_state='inbox') AS inbox,count(*) FILTER(WHERE kind<>'memo' AND is_bookmarked) AS bookmarked
       FROM app.cards WHERE owner_id=%s AND lifecycle='active'""",(owner,))
+
+
+@router.get('/memo-items')
+def memo_items(db:Db,owner:Owner,is_completed:bool=False,q:Annotated[str|None,Query(max_length=200)]=None,limit:Limit=24,offset:Offset=0):
+    return memos.listing(db,owner,is_completed=is_completed,q=q,limit=limit,offset=offset)
+
+
+@router.put('/cards/{entity}/memo-items/order')
+def memo_order(entity:UUID,body:MemoOrder,db:Db,owner:Owner):
+    return memos.reorder(db,owner,entity,body)
+
+
+@router.patch('/cards/{entity}/memo-items/{item_id}')
+def memo_complete(entity:UUID,item_id:UUID,body:MemoCompletion,db:Db,owner:Owner):
+    return memos.complete(db,owner,entity,item_id,body)
 
 
 @router.get('/cards/{entity}')
@@ -110,7 +127,7 @@ def taxonomy_delete(db,owner,table,entity):
 
 
 @router.get('/topics')
-def topics(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference']|None=None): return taxonomy_list(db,owner,'topics',kind)
+def topics(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo']|None=None): return taxonomy_list(db,owner,'topics',kind)
 
 
 @router.post('/topics',status_code=201)
@@ -207,7 +224,7 @@ def me_summary(db:Db,owner:Owner): return profiles.summary(db,owner)
 
 
 @router.get('/me/activity')
-def me_activity(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','collection']|None=None,limit:Limit=24,offset:Offset=0): return profiles.activity(db,owner,kind,limit,offset)
+def me_activity(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo','collection']|None=None,limit:Limit=24,offset:Offset=0): return profiles.activity(db,owner,kind,limit,offset)
 
 
 @router.get('/me/heatmap')
