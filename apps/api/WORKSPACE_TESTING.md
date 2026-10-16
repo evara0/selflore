@@ -58,6 +58,39 @@
 - 总结：流程执行情况与产品视觉结果分别陈述；不适用时写原因。
 ```
 
+## 仓库自动 CI
+
+仓库工作流为 `.github/workflows/ci.yml`，分支push、pull_request及手动workflow_dispatch触发；同一事件／分支的新运行取消旧运行。GitHub会在工作流提交推送后执行，手动入口需该文件已在默认分支。触发语义见[GitHub工作流说明](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)。
+
+| 检查名 | 自动执行范围 |
+| --- | --- |
+| Docs and CI tools | CI辅助脚本测试；当前受Git跟踪、非OpenSpec Markdown的本地文件／图片链接及章节锚点 |
+| Frontend checks | 锁定pnpm安装、Oxlint、Vitest组件测试及TypeScript／Vite构建 |
+| Backend tests (PostgreSQL 18) | 锁定uv安装；自建6179和6180空实例，运行全部公开后端pytest，并拒绝失败、skip或零测试报告 |
+
+三个job独立运行，使用固定提交的Action、只读仓库权限和临时runner；不需要配置生产Secrets，不运行本机deploy工具。此工作流不设置分支保护，是否将检查设为合并必需项由仓库维护者另外配置。
+
+后端PG18通过[官方PGDG源](https://www.postgresql.org/download/linux/ubuntu/)安装。临时实例在项目缓存中创建唯一目录，仅监听127.0.0.1，用trust认证兼容既有测试夹具；它们只有合成数据，不能改用已有实例或开放外部监听。脚本会清除继承的app／libpq连接设置，拒绝占用端口；结束或失败时停止所属实例，清理失败也判失败。强制终止时由临时runner回收环境，本地被强杀的残留实例需按具体缓存目录核对后停止。
+
+以下命令在仓库根复跑辅助检查，无需数据库：
+
+```powershell
+python -m unittest discover -s scripts/tests -v
+python scripts/check_docs.py
+```
+
+文档检查只检查Git交付的当前说明，不探测外站可用性，也不检查历史OpenSpec链接。新文档或链接目标尚未加入Git索引时会失败；应先核对交付范围，不把忽略资料强行加入仓库。普通行内链接、图片、显式引用式链接与Markdown标题锚点受检，外站、HTML自定义锚点和其他扩展语法不作可用性保证。
+
+完整后端CI入口使用已冻结同步的API虚拟环境；在 `apps/api` 执行，`SELFLORE_PG_BIN` 须先设置为本机PG18的bin目录，不能改目标端口：
+
+```powershell
+uv run --frozen --no-env-file python ../../scripts/ci_backend.py
+```
+
+该命令创建并停止自己的测试库，不需要预建6179／6180；两端口被占用则拒绝。报告保存在 `.cache/ci-reports/backend-<run-id>.xml` 和同名JSON；GitHub仅上传这些报告以及前端JUnit，保留7天，不上传数据库、凭据或媒体目录。
+
+基础CI不自动运行Playwright、实际截图查看、生产备份或部署；这些仍按下文及现有发布门禁执行。CI绿灯不能替代视觉验收。本地命令通过与真实GitHub job通过需分别记录。
+
 ## 常规检查
 
 在 `apps/api` 执行 `uv sync --frozen`、`uv run pytest -q`；未提供隔离环境时数据库集成测试会明确skip，不能视为完整通过。前端命令统一见[前端检查与构建](../web/README.md#检查与构建)，Vitest配置为threads／单worker。

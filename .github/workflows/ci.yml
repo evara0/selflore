@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: Docs and CI tools
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: '0.11.16'
+          enable-cache: false
+      - name: Test CI helpers
+        run: uv run --no-project --python 3.13 python -m unittest discover -s scripts/tests -v
+      - name: Check public documentation
+        run: uv run --no-project --python 3.13 python scripts/check_docs.py
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          package_json_file: apps/web/package.json
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - name: Component tests
+        run: |
+          mkdir -p ../../.cache/ci-reports
+          pnpm exec vitest run --pool=threads --maxWorkers=1 --reporter=default --reporter=junit --outputFile.junit=../../.cache/ci-reports/frontend.xml
+      - run: pnpm build
+      - name: Upload component test report
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: frontend-test-report
+          path: .cache/ci-reports/frontend.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+  backend:
+    name: Backend tests (PostgreSQL 18)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SELFLORE_PG_BIN: /usr/lib/postgresql/18/bin
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: '0.11.16'
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+      - name: Install PostgreSQL 18 from PGDG
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ca-certificates curl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --location https://www.postgresql.org/media/keys/ACCC4CF8.asc --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          . /etc/os-release
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' "$VERSION_CODENAME" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y postgresql-18 postgresql-client-18
+      - name: Install locked API dependencies
+        working-directory: apps/api
+        run: uv sync --frozen
+      - name: Run tests in owned disposable clusters
+        working-directory: apps/api
+        run: uv run --frozen --no-env-file python ../../scripts/ci_backend.py
+      - name: Upload backend test reports only
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: backend-test-reports
+          path: |
+            .cache/ci-reports/backend-*.xml
+            .cache/ci-reports/backend-*.json
+          retention-days: 7
+          if-no-files-found: warn

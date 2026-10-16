@@ -27,7 +27,7 @@ SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理�
 | 前端 | React、TypeScript、Vite、React Router、TanStack Query；pnpm 锁定依赖 |
 | 后端 | Python 3.13+、FastAPI、psycopg；uv 锁定依赖 |
 | 数据 | PostgreSQL 18、不可变 SQL 增量迁移；图片保存到独立私有文件目录 |
-| 验证 | pytest、Vitest、Playwright、Oxlint；前端展示变更另需浏览器视觉审查 |
+| 验证 | GitHub Actions基础CI：文档、前端和后端；pytest、Vitest、Playwright、Oxlint；前端展示变更另需浏览器视觉审查 |
 
 ## 本地运行
 
@@ -73,7 +73,7 @@ openspec/
 | 数据库首次准备与后续迁移 | [数据库初始化](apps/api/DATABASE_SETUP.md) · [迁移说明](apps/api/CARD_MIGRATIONS.md) |
 | 认证配置、首位管理员及手动运行 | [认证配置](apps/api/AUTH_CONFIGURATION.md) |
 | 接口与数据交互 | [工作区 API](apps/api/WORKSPACE_API.md) |
-| 测试与前端视觉审查 | [本地验证](apps/api/WORKSPACE_TESTING.md) |
+| 仓库CI、测试与前端视觉审查 | [自动CI](apps/api/WORKSPACE_TESTING.md#仓库自动-ci) · [本地验证](apps/api/WORKSPACE_TESTING.md) |
 | 图片上传、存储及排查 | [MEDIA_STORAGE.md](MEDIA_STORAGE.md) |
 | 开发库备份与恢复演练 | [DATABASE_BACKUP.md](DATABASE_BACKUP.md) |
 | 日常维护与排障 | [MAINTENANCE.md](MAINTENANCE.md) |
