@@ -1,0 +1,29 @@
+{
+  "source_commit": "5dd8d8691e5cf58420832e32600dda5f6285b879",
+  "sections": [
+    {
+      "source": "LOCAL_START.md",
+      "section": "## 验证记录",
+      "sha256": "780d17ed97a43934fac4d6a8941494d5d58071f0786b6d4f0ec72de8cb05c85d",
+      "characters": 379
+    },
+    {
+      "source": "DATABASE_BACKUP.md",
+      "section": "## 2026-10-09验收",
+      "sha256": "e1d76b29dccbada56bb8fe69860e4952b3a3b5c4d98f24bc313cce79c0dda611",
+      "characters": 686
+    },
+    {
+      "source": "apps/api/CARD_MIGRATIONS.md",
+      "section": "## 验收范围",
+      "sha256": "ab14c19550658128dd929fadbc5b71972585054aa791f6926acf3c0d7023d9ab",
+      "characters": 565
+    },
+    {
+      "source": "apps/api/WORKSPACE_TESTING.md",
+      "section": "## 备忘回归（2026-10-16）",
+      "sha256": "75b970a854f7068dcec2f40fab347a3322c2160eb5b96785cec92679c0d45549",
+      "characters": 561
+    }
+  ]
+}

@@ -60,15 +60,13 @@
 
 ## 常规检查
 
-在 `apps/api` 执行 `uv sync --frozen`、`uv run pytest -q`；未提供隔离 DSN 时，数据库集成测试会明确 skip，不能视为通过。前端在 `apps/web` 执行 `pnpm install --frozen-lockfile`、`pnpm test`、`pnpm lint`、`pnpm build`。
+在 `apps/api` 执行 `uv sync --frozen`、`uv run pytest -q`；未提供隔离环境时数据库集成测试会明确skip，不能视为完整通过。前端命令统一见[前端检查与构建](../web/README.md#检查与构建)，Vitest配置为threads／单worker。
 
-Vitest 使用 threads / 单 worker，规避本机 Windows 子进程 IPC 限制。浏览器测试位于 `apps/web/e2e`，使用本机 Chrome；API 24568 提供同次前端构建产物。Playwright 不依赖远端服务。
+## 数据库集成测试
 
-## 完整数据库测试
+测试夹具会清空身份和业务表，**只允许自行准备的一次性6179实例**，禁止使用6171开发库或生产库。迁移演练额外核对data_directory位于本项目 `.cache/card-tests`。先用PostgreSQL工具创建该私有实例，再按[数据库初始化](DATABASE_SETUP.md)和[迁移说明](CARD_MIGRATIONS.md)准备dev角色及完整链，所有命令改用6179；不得复用业务库。
 
-测试夹具会清空身份和业务表，**只允许自行准备的一次性6179实例**，禁止使用6171开发库或生产库。迁移演练额外核对 PostgreSQL data_directory 位于本项目 `.cache/card-tests`。实例 / 角色先用 `app.db_bootstrap` 建立，再用 `app.db_migrate` 应用全链；不要把这种测试配置带到实际环境。
-
-在 PowerShell 的 `apps/api` 配置：
+在 `apps/api` 的专用测试终端配置：
 
 ```powershell
 $env:SELFLORE_TEST_ISOLATED = '1'
@@ -77,13 +75,24 @@ $env:SELFLORE_TEST_MIGRATOR_DSN = 'host=127.0.0.1 port=6179 dbname=selflore_dev 
 uv run pytest -q -p no:cacheprovider --basetemp ../../.cache/card-tests/full-run
 ```
 
-示例 DSN 未含密码，若实例需要密码，使用本机凭据设施。测试包含真实事务 / 并发请求 / FK / 增量迁移演练；不接受改端口来复用实际业务数据库。
+示例DSN不含密码，按实例认证方式配置本机凭据。测试覆盖事务、修订冲突、关系隔离及增量迁移，不能通过换端口来连接真实业务数据。
+
+### 注册策略专用实例
+
+`tests/test_registration_policy_db.py` 还要求独立的空PostgreSQL 18实例：监听6180，data_directory位于仓库 `.cache/registration-policy`，允许本机测试进程按该测试夹具连接 `postgres` 管理库。该实例不能预先运行通用业务初始化；夹具会自行创建随机密码角色和升级基线。
+
+只有在上述一次性实例准备好后，才在专用测试终端设置 `SELFLORE_POLICY_TEST_ISOLATED=1` 并运行测试。未准备时该组会skip，需要明确记录未覆盖，不能仅凭6179测试通过宣称全量数据库测试完成；不要为了消除skip把它指向已有库。
 
 ## 浏览器闭环
 
-先执行 `pnpm build`。随后在 `apps/api` 的专用终端配置：
+先完成6179数据库准备，并按[前端说明](../web/README.md#检查与构建)构建当前页面。浏览器上传测试还需要独立媒体目录；以下命令在 `apps/api` 的专用终端执行：
 
 ```powershell
+$testRoot = (Resolve-Path ../..).Path
+$env:SELFLORE_MEDIA_ROOT = Join-Path $testRoot '.cache/card-tests/browser-media'
+$env:SELFLORE_MEDIA_OPS_ROOT = Join-Path $testRoot '.cache/card-tests/browser-media-ops'
+uv run python -m app.media_storage --initialize --environment dev --media-root $env:SELFLORE_MEDIA_ROOT --ops-root $env:SELFLORE_MEDIA_OPS_ROOT
+
 $env:SELFLORE_DATABASE_URL = $env:SELFLORE_TEST_APP_DSN
 $env:SELFLORE_ENV = 'dev'
 $env:SELFLORE_ALLOW_REGISTRATION = 'true'
@@ -91,19 +100,24 @@ $env:SELFLORE_ALLOWED_ORIGINS = 'http://127.0.0.1:24568'
 uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 ```
 
-在另一终端的 `apps/web` 设置 SELFLORE_TEST_ISOLATED=1，执行 `pnpm test:e2e`。浏览器测试会创建隔离私有账号与样例，通过真实界面创建知识 / 观点 / 合集、评分、改稿冲突、浏览器返回提示、随机顺序、填空揭示、网络失败重试和退出缓存隔离。不能与后端清理测试并行运行。
+`SELFLORE_TEST_APP_DSN` 使用前节的6179配置及凭据；浏览器终端须重新设置或继承明确的测试变量。媒体目录只用于测试，不能填日常用户图片路径。
 
-实际截图保存到 `docs/design/card-navigation-v1/implemented`；追踪失败文件在 `.cache/card-tests/browser-results`。千卡检索 EXPLAIN 存为该截图目录的 `search-explain.json`，短中文搜索可能选择 owner/更新顺序 B-tree；pg_trgm 对短于3字符的查询不承诺强制走 GIN。
+在另一终端的 `apps/web` 设置 `SELFLORE_TEST_ISOLATED=1`，执行 `pnpm test:e2e`。当前配置使用本机Chrome和24568服务；不要把测试指向演示站点或日常账号。用例会创建测试账号与内容，不能与清理数据库的后端测试同时运行。
 
-浏览器服务 Ctrl+C 停止。一次性 PG 用本机 pg_ctl 指定该 `.cache/card-tests/pgdata` 目录执行 `-m fast -w stop`；停止后保留或按需清理缓存，不触及业务库。
+失败trace默认位于 `.cache/card-tests/browser-results`，部分用例另向忽略的docs或缓存目录输出截图；报告应写实际生成路径。按本文视觉审查流程另存当前证据，旧截图不能替代新检查。
 
-## 发布检查
+服务用 `Ctrl+C` 停止；PostgreSQL仅用pg_ctl停止自己创建的确切缓存data_directory，不停止其他实例或清理业务数据。截图、缓存及离线库仍需按私有资料保管。
 
-`deploy\publish.cmd -CheckOnly` 不连接服务器；可使用相同隔离 DSN 运行完整数据库检查。`deploy/tests/remote-gate.sh` 用临时目录和替身命令验证暂存后仍无 current、无成功迁移标记无法激活。实际生产迁移和探针仍需在正式发布时授权执行。
-## 备忘回归（2026-10-16）
+## 代表性回归与记录
 
-后端新增tests/test_memos.py、test_memo_schema.py和test_memo_migration.py，覆盖完成幂等、父修订冲突、条目身份、关联及数据库直接写入约束、0005旧数据保留。沿用本文隔离DSN与SELFLORE_TEST_ISOLATED=1要求；pytest会清理测试数据，只能连接一次性库。
+| 范围 | 当前测试入口 |
+| --- | --- |
+| 备忘接口、约束与升级 | `tests/test_memos.py`、`tests/test_memo_schema.py`、`tests/test_memo_migration.py` |
+| 备忘交互与布局 | `apps/web/src/memo.test.tsx`、`apps/web/e2e/memo.spec.ts`、`apps/web/e2e/memo-layout.spec.ts` |
+| 认证、卡片、资料、复习及合集 | 后端tests与前端组件／e2e中的对应模块，回归范围按实际变更选择 |
 
-前端在apps/web运行pnpm test、pnpm lint、pnpm build；浏览器沿用24568一次性服务，设置SELFLORE_TEST_ISOLATED=1后运行pnpm test:e2e。新增e2e/memo.spec.ts涵盖创建、排序、关联、完成撤销、冲突、回收站恢复、合集只读及320/390/1280像素检查；旧资料上传、知识复习和观点引用流程一同回归。
+记录本次命令、环境、提交、pass／fail／skip及范围；历史表数和测试数量不作为通过标准。旧备忘联合恢复及其他批次结果已迁至[历史验收记录](../../openspec/changes/consolidate-public-operations-docs/historical-validation.md)。
 
-本次联合恢复使用一次性源6179、私有恢复6181，原日常6171未操作；此为受控演练，未修改backup-db.cmd的默认端口或安全限制。23张表结构、权限及数据签名与媒体核验通过，恢复实例在finally停止。发布兼容性模拟可运行apps/api/.venv/Scripts/python.exe -m pytest deploy/tests/test_executor.py，不连接服务器。
+## 维护者本机发布门禁
+
+`deploy/`、具体接入配置和 `local-deployment/` 被Git忽略，不随仓库交付，也不是上面公开测试的前提。维护者本机 `deploy/RELEASE_WORKFLOW.md` 负责指定提交、同包检查、备份副本、迁移、激活和实际版本／readiness验证；单独CheckOnly不连接生产。没有这套本机工具的协作者按本文运行公开检查即可，不能把本机执行器模拟结果当成生产已发布。

@@ -7,7 +7,7 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /cards`、`POST /cards` | 本人摘要分页 / 创建卡片 |
-| `GET /cards/summary` | 活跃知识、观点、待整理、收藏数 |
+| `GET /cards/summary` | 活跃知识、观点、资料及备忘数量；待整理与收藏不计备忘 |
 | `GET/PATCH /cards/{id}` | 完整详情 / 修订编辑 |
 | `POST /cards/{id}/lifecycle` | archive / trash / restore |
 | `GET /cards/{id}/links` | outgoing / incoming，按目标去重并返回 origins |
@@ -26,7 +26,7 @@
 | `GET /me/summary`、`GET /me/activity` | 卡片积累 / 最近记录分页 |
 | `GET /me/heatmap`、`GET /me/pinned-collections` | 本人时区十二周日历 / 最多六个置顶合集 |
 
-`GET /cards` 支持 kind、q、topic_id、tag_id、lifecycle（默认 active）、processing_state、is_bookmarked、sort、limit（1–100）、offset。排序为 updated_desc / created_desc / code_asc / connections_desc；中文 ILIKE 字面匹配，百分号和下划线不会扩展通配范围。摘要不返回答案或完整正文；填空摘要遮蔽答案。分页返回 items / total / limit / offset。
+`GET /cards` 支持 kind（knowledge／opinion／reference／memo）、kinds（与kind互斥的逗号分隔类型集合）、memo_format（须配合kind=memo）、q、topic_id、tag_id、lifecycle（默认 active）、processing_state、is_bookmarked、sort、limit（1–100）、offset。排序为 updated_desc / created_desc / code_asc / connections_desc；中文 ILIKE 字面匹配，百分号和下划线不会扩展通配范围。摘要不返回答案或完整正文；填空摘要遮蔽答案。分页返回 items / total / limit / offset。
 
 创建卡片示例（UUID 由客户端产生，每次新意图不同，重试同一意图相同）：
 
@@ -46,7 +46,6 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 
 完整字段约束可见运行服务的 `/docs` 与 `app/schemas/workspace.py`。表结构和迁移见 [CARD_MIGRATIONS.md](CARD_MIGRATIONS.md)。
 
-## 资料卡与附件
 ## 备忘与清单
 
 kind=memo、form=null，memo_format为note或checklist，创建后不可变。标题必填，正文body_md可空；note只需标题，checklist需要1–200个memo_items。条目输入为id（客户端生成的稳定UUID）、text（去空白后1–2000字符）、is_completed、target_ids（最多20个本人卡片）。顺序由输入数组决定。备忘不能包含附件、分类或知识问答字段；标签和来源可选。

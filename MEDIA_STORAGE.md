@@ -1,27 +1,34 @@
 # 资料卡、图片存储与排查
 
-资料卡用于收录外部摘录或图片，原始材料与「我的说明」分开展示。收录不代表认同或核验为事实；未知作者、发布时间可留空。来源作者、发布／转载者和图片作者可分别填写。资料可被观点引用、加入合集、归档和恢复，不进入知识复习。
+本文负责私有图片目录、上传限制、只读诊断及部署前提。资料卡用途见[项目首页](README.md)，请求字段见[API说明](apps/api/WORKSPACE_API.md#资料卡与附件)；备份与恢复统一见[备份说明](DATABASE_BACKUP.md)。
 
 ## 本机启用
 
-先停止日常应用，按现有 `DATABASE_BACKUP.md` 备份开发库，再使用迁移角色运行追加迁移（0005），不修改历史SQL、不重建数据库。在项目根明确初始化两个目录：
+先备份开发库并按[迁移说明](apps/api/CARD_MIGRATIONS.md)应用完整链，再停止日常应用并准备媒体目录。以下命令在Windows仓库根运行，示例将存储放到仓库父目录的 `selflore-data`，不依赖维护者盘符：
 
 ```powershell
-.\start-local.cmd -ConfigureMedia -MediaRoot G:\selflore-data\media -OpsRoot G:\selflore-data\media-ops
+$repositoryPath = (Get-Location).Path
+$storageBase = Join-Path (Split-Path -Parent $repositoryPath) 'selflore-data'
+$mediaRoot = Join-Path $storageBase 'media'
+$opsRoot = Join-Path $storageBase 'media-ops'
+.\start-local.cmd -ConfigureMedia -MediaRoot $mediaRoot -OpsRoot $opsRoot
 ```
 
-此命令为当前用户及SYSTEM设置新目录私有权限；已有已初始化目录只核对身份，不递归修改权限。随后在 `apps/api/.env` 添加以下非秘密设置，再执行 `start-local.cmd -CheckOnly` 和正常启动：
+此命令为当前用户及SYSTEM设置新目录私有权限；已有已初始化目录只核对身份，不递归修改权限。将这两个变量的实际完整路径填入 `apps/api/.env`，路径建议使用正斜杠：
 
-```dotenv
-SELFLORE_MEDIA_ROOT=G:/selflore-data/media
-SELFLORE_MEDIA_OPS_ROOT=G:/selflore-data/media-ops
+```powershell
+# 输出实际路径后，分别作为 SELFLORE_MEDIA_ROOT 与 SELFLORE_MEDIA_OPS_ROOT 的值写入.env
+$mediaRoot.Replace('\', '/')
+$opsRoot.Replace('\', '/')
 ```
+
+随后按[本地启动](LOCAL_START.md#日常启动和停止)执行检查和正常启动。只修改媒体路径变量不代表目录已初始化。
 
 媒体与运维目录必须互不嵌套，业务目录在代码／发布目录之外。普通启动和诊断不创建或修复目录。未配置媒体时保留文本卡片、摘录资料和健康检查；上传返回存储不可用。升级代码后的日常数据库须先追加迁移，不能直接沿用旧结构。
 
 资料编辑器支持文件选择、拖拽，以及在任意编辑字段粘贴剪贴板图片；普通文字粘贴仍由对应字段处理。
 
-首版每文件20 MiB、40百万像素、最长边20000像素，每卡10图；静态JPEG、PNG、WebP。可用 `SELFLORE_MEDIA_MAX_BYTES`、`SELFLORE_MEDIA_MAX_PIXELS`、`SELFLORE_MEDIA_MAX_EDGE` 调整前三项；界面显示实际值。原图字节保留，列表加载最大960像素WebP缩略图；原图可能包含EXIF，缩略图不保留EXIF。
+默认每文件20 MiB、40百万像素、最长边20000像素，每卡10图；静态JPEG、PNG、WebP。可用 `SELFLORE_MEDIA_MAX_BYTES`、`SELFLORE_MEDIA_MAX_PIXELS`、`SELFLORE_MEDIA_MAX_EDGE` 调整前三项；界面显示实际值。原图字节保留，列表加载最大960像素WebP缩略图；原图可能包含EXIF，缩略图不保留EXIF。
 
 ## 按需排查
 
@@ -33,7 +40,7 @@ SELFLORE_MEDIA_OPS_ROOT=G:/selflore-data/media-ops
 .\check-media.cmd -Deep
 .\check-media.cmd -Deep -Details
 .\check-media.cmd -Record
-.\check-media.cmd -Json -Output report-20261012.json
+.\check-media.cmd -Json -Output report.json
 .\check-media.cmd -BandwidthMbps 10
 ```
 
@@ -64,14 +71,11 @@ P95是服务端响应完成计时，不是浏览器端到端体验。遥测仅�
 
 ## 备份、恢复与更新
 
-固定 `backup-db.cmd` 在新结构上生成 `selflore-backup-v2`，同一数据库快照的dump、签名和ready附件清单对应原图／缩略图；包含回收站、归档、未引用ready，不包含上传中及未知孤立文件。文件缺失或损坏不会生成完整成功清单。
+命令、v1／v2格式、ready范围及隔离恢复统一见[备份与恢复](DATABASE_BACKUP.md)。数据库dump和媒体清单必须对应同一快照；仅有数据库文件不能算当前图片库的完整备份。
 
-`backup-db.cmd -Rehearse` 使用新建的密码保护6179实例及独立媒体目录，核对库结构／数据／关系和文件hash，并通过临时本人会话读取恢复后的图片；探测会话随后清除。日常6171和媒体目录不作为演练目标。旧无附件v1备份仍可恢复，新库缺附件不能伪装成v1完整包。具体命令见 `DATABASE_BACKUP.md`。
+删除卡片及移除图片仅改变关系，已完成原图保留，当前没有永久附件清理。媒体不进入Git或发布包，程序更新不移动目录。应用能力与回退条件统一见[迁移兼容性](apps/api/CARD_MIGRATIONS.md#发布与回退)；不能给旧程序伪造标记绕过检查。
 
-删除卡片及移除图片仅改变关系，已完成原图保留；首版无永久附件清理。媒体不进入Git或发布包，程序更新不移动目录。已有资料后不能自动回退到只认识两类卡片的旧应用；保留新数据，使用兼容版本修复或暂时停用上传。
-新包携带`app/card-schema-capability`标记。探针失败时，发布脚本仅在前一版本声明相同能力时自动回退；标记缺失或不匹配则保持新版本指针、返回失败并要求管理员处理，不执行反向迁移。恢复之前核对`current`指针、实际数据库迁移历史和两个版本的能力标记；不能手工给旧程序补标记以绕过检查。
-
-## Linux发布准备（尚未生产演练）
+## Linux发布准备
 
 管理员预建 `/srv/selflore/shared/media` 和 `/srv/selflore/shared/media-ops`，所属selflore且权限0700；显式初始化环境标识后配置对应环境变量。systemd保留ProtectSystem=strict，只对这两个路径设置ReadWritePaths；自定义路径需同步修改服务授权并核对权限。缺目录的可选路径不会阻止旧文本服务启动，但不会令图片上传可用。
 在Linux的 `/srv/selflore/current/apps/api` 目录，以selflore服务账号使用现有虚拟环境执行：
@@ -80,6 +84,6 @@ P95是服务端响应完成计时，不是浏览器端到端体验。遥测仅�
 python -m app.media_storage --initialize --environment prod --media-root /srv/selflore/shared/media --ops-root /srv/selflore/shared/media-ops
 ```
 
-初始化不访问数据库，不自动写运行环境文件；已有非空且标识不符的目录会被拒绝。此CLI逻辑在Windows临时目录验证，Linux systemd写权限仍待实机验证。
+初始化不访问数据库，不自动写运行环境文件；已有非空且标识不符的目录会被拒绝。每个实际目标都需要核验服务账号、目录标识、权限和systemd写入范围，不能从本机初始化结果推断生产已就绪。
 
-生产发布前暂停应用写入，备份生产数据库并按相同状态的ready清单打包原图／缩略图、核对hash，形成受限联合备份后再恢复服务。备份失败不得激活新版；不得拿本机固定开发库工具直接连接生产。保留暂存→联合备份→指定版本迁移→激活流程，真正的生产备份恢复需另行授权并演练；本次仅本机隔离验证。同盘备份不提供异地容灾，应另存到受控介质或异地存储。
+生产发布前通过维护者本机流程创建一致快照的联合备份及受保护收据，并完成本机副本核验；备份失败不得迁移或激活新版。具体接入与发布脚本不随公开仓库交付。生产恢复与灾难恢复需要单独的目标核对和演练，不能从成功备份推断已经验证；最近一次已有记录见[生产发布验收](openspec/changes/approve-memo-release-tools/validation.md)。本次文档整理不执行这些操作。

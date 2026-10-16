@@ -17,9 +17,9 @@
 
 ## 2. 开发运行示例
 
-本机SelfLore已有固定入口，推荐按[本地固定启动](../../LOCAL_START.md)一次配置app密码，再从项目根执行`start-local.cmd`；该入口通过uv --env-file显式加载`apps/api/.env`，普通uvicorn启动不会自动读取.env。日常应用与迁移凭据独立保存，启动不运行迁移。下面保留其他开发环境的手动命令。
+Windows固定入口、应用密码配置和日常停止／重启统一见[本地启动](../../LOCAL_START.md)。本文只负责通用手动配置：环境变量由启动进程读取，普通uvicorn不会自动加载 `.env`；应用启动不运行迁移。
 
-示例端口5432应替换为目标数据库端口；先在本机配置app角色的libpq密码文件，然后在PowerShell执行：
+以下PowerShell示例使用5432；固定Windows开发库应改为6171。先准备目标数据库及app角色的libpq密码文件，再执行：
 
 ```powershell
 uv sync --frozen
@@ -28,11 +28,13 @@ $env:SELFLORE_DATABASE_URL = 'host=127.0.0.1 port=5432 dbname=selflore_dev user=
 uv run uvicorn app.main:app --host 127.0.0.1 --port 24566
 ```
 
+若已按固定入口生成 `apps/api/.env` 和独立应用凭据，可在 `apps/api` 显式执行 `uv run --env-file .env uvicorn app.main:app --host 127.0.0.1 --port 24566`。先清除本终端不再使用的旧 `SELFLORE_*` 连接覆盖值；此手动命令没有固定脚本的目标检查和连接源清理。按 `Ctrl+C` 停止，修改配置后重新启动。
+
 开发默认Origin为 `http://127.0.0.1:24566` 和 `http://127.0.0.1:24567`。若使用其他浏览器入口，显式设置SELFLORE_ALLOWED_ORIGINS，不能省略端口或混用不同主机名称。
 
 公开注册只创建普通用户和默认资料，成功后需要登录。用户名为3–32字符，可包含常用中文、英文字母、数字、下划线或连字符，不限制首字符，按大小写不敏感保持唯一。注册或修改密码要求8–128字符。`GET /api/auth/config` 返回registration_enabled，关闭注册时前端隐藏入口，注册请求返回403。
 
-发布此规则版本前先通过 `app.db_migrate` 执行完整迁移链，包含 `0004_relax_username.sql`，再更新后端和前端；旧账号和历史迁移文件保持不变。
+用户名规则由完整迁移链和当前认证代码共同保证；升级统一按[迁移说明](CARD_MIGRATIONS.md)执行，旧账号和历史SQL保持不变。
 
 ## 3. 首位管理员
 

@@ -1,32 +1,30 @@
 # SelfLore API
 
-要通过后端端口访问前端页面，先在项目根目录构建前端：
+FastAPI 后端，使用 psycopg 访问 PostgreSQL，业务入口为 `app.main:app`。产品说明见[项目首页](../../README.md)。
 
-```text
-cd apps/web
-pnpm install --frozen-lockfile
-pnpm build
-```
+## 准备与运行
 
-然后启动后端，无需启动 Vite 开发服务：
+以下路径统一从仓库根定位，命令在 `apps/api` 执行：
 
-```text
-cd ../api
+```powershell
 uv sync --frozen
-uv run uvicorn app.main:app --host 127.0.0.1 --port 24566
 ```
 
-页面地址：`http://127.0.0.1:24566/`。健康检查地址：`http://127.0.0.1:24566/api/health`。
+1. 新环境按[数据库初始化](DATABASE_SETUP.md)准备 PostgreSQL、角色和完整迁移链；已有环境按[增量迁移](CARD_MIGRATIONS.md)升级。
+2. 按[认证配置与手动运行](AUTH_CONFIGURATION.md)设置 app 角色连接、Origin 和凭据，再启动 API。固定 Windows 入口见[本地启动](../../LOCAL_START.md)。
+3. 健康检查为 `http://127.0.0.1:24566/api/health`，交互式接口文档为 `/docs`。健康检查成功不代表数据库已配置或迁移完成。
 
-如果在后端已启动后才构建前端，需重启后端才能挂载新的构建目录。前端未构建时，健康检查仍可使用，页面请求返回 404。
+API 可同时提供 `apps/web/dist` 中的页面。前端构建命令见[前端说明](../web/README.md#检查与构建)，构建完成后启动或重启 API；未构建时页面返回404，API仍可访问。应用启动不建表、不自动迁移，也不会自动读取 `.env`；环境加载方式见认证说明。
 
-启动前配置 SELFLORE_DATABASE_URL 为 app 角色 DSN，并显式执行 `migrations/` 的完整增量链；不能用应用启动代替迁移。
+## 代码入口
 
-业务实现位于 `app/routers`、`schemas`、`services`、`repositories`；支持知识 / 观点卡片、稳定链接、混合合集、FSRS 调度、个人资料和学习足迹，复用已有认证。
+| 路径 | 职责 |
+| --- | --- |
+| `app/main.py`、`app/auth.py` | 应用挂载、会话与权限 |
+| `app/routers/`、`app/schemas/` | 业务路由与输入约束 |
+| `app/services/`、`app/repositories/` | 业务逻辑、SQL及数据库访问辅助函数 |
+| `app/db_bootstrap.py`、`app/db_migrate.py` | 数据库／角色准备与独立迁移 |
+| `app/media_storage.py`、`app/media_diagnostics.py`、`app/db_backup.py` | 私有图片、诊断及备份恢复 |
+| `migrations/`、`tests/` | 不可变SQL增量与后端测试 |
 
-- [工作区 API](WORKSPACE_API.md)
-- [增量建表与迁移](CARD_MIGRATIONS.md)
-- [隔离数据库与浏览器测试](WORKSPACE_TESTING.md)
-- [数据库首次初始化](DATABASE_SETUP.md)
-- [账号与安全配置](AUTH_CONFIGURATION.md)
-- [日常维护](../../MAINTENANCE.md)
+接口字段见[工作区 API](WORKSPACE_API.md)，测试命令与隔离约束见[本地验证](WORKSPACE_TESTING.md)，操作索引见[维护卡](../../MAINTENANCE.md)。
