@@ -1,0 +1,40 @@
+name: 问题反馈
+description: 报告可以复现的功能或界面问题
+body:
+  - type: markdown
+    attributes:
+      value: 请先搜索已有问题。请使用演示或合成数据，截图与日志不要包含凭据和私人笔记。
+  - type: input
+    id: version
+    attributes:
+      label: 运行版本
+      description: 提交SHA、版本号，或说明使用在线演示及发生时间。
+      placeholder: 例如 main 的提交SHA／在线演示 2026-10-16
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、浏览器版本；界面问题同时填写视口宽度或设备型号。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: 描述从哪个页面开始，执行哪些操作，以及能稳定复现的最小示例。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 实际表现与预期表现
+      description: 分别说明现在发生了什么，以及你期望发生什么。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或日志
+      description: 可选。只保留与复现有关的脱敏内容。

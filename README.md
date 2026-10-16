@@ -1,5 +1,7 @@
 # SelfLore
 
+[![CI](https://github.com/evara0/selflore/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/evara0/selflore/actions/workflows/ci.yml)
+
 SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理事实知识、记录自己的观点，并用备忘和清单安排待办与待学内容。
 
 **[在线演示：selflore.evara.blog](https://selflore.evara.blog)**
@@ -19,6 +21,18 @@ SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理�
 - **事实知识**：用问答或填空组织知识，支持 FSRS 间隔复习。
 - **原子观点**：记录自己的想法，通过稳定编号和双向链接连接其他卡片。
 - **备忘**：记录行动和学习安排；资料卡、观点及备忘均不进入知识复习。
+
+## 界面预览
+
+截图来自当前开发版本的只读演示空间，内容均为合成示例，线上版本可能暂未包含最新改动。[截图来源与更新说明](assets/screenshots/README.md)。
+
+**桌面：统一卡片库**
+
+![桌面卡片库：资料、事实知识与原子观点统一浏览](assets/screenshots/cards-desktop.png)
+
+**手机：备忘与待学清单**
+
+![手机备忘：随手记和待学清单，底部保留四个导航及新建入口](assets/screenshots/memos-mobile.png)
 
 ## 技术栈
 
@@ -53,7 +67,8 @@ SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理�
 apps/
   web/                React 前端：src/features、components、lib；e2e 浏览器测试
   api/                FastAPI 后端：app、migrations、tests
-scripts/              本地启动、备份及媒体诊断的 PowerShell 实现
+scripts/              本地启动、备份、媒体诊断及CI辅助脚本
+assets/screenshots/   README使用的公开演示截图及来源说明
 openspec/
   specs/              当前能力规格
   changes/            活跃变更与 archive 历史记录
@@ -77,3 +92,11 @@ openspec/
 | 图片上传、存储及排查 | [MEDIA_STORAGE.md](MEDIA_STORAGE.md) |
 | 开发库备份与恢复演练 | [DATABASE_BACKUP.md](DATABASE_BACKUP.md) |
 | 日常维护与排障 | [MAINTENANCE.md](MAINTENANCE.md) |
+
+## 参与贡献
+
+问题反馈和功能建议请使用[GitHub Issues](https://github.com/evara0/selflore/issues/new/choose)。准备修改代码或文档时，先阅读[贡献指南](CONTRIBUTING.md)，其中说明了开发入口、验证要求及PR流程。
+
+## 许可证
+
+SelfLore采用[Apache License 2.0](LICENSE)。第三方依赖和引用材料适用各自许可；用户自行保存的笔记、图片及来源材料不因使用本项目而自动获得此许可。
