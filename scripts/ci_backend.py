@@ -85,9 +85,20 @@ class Cluster:
 
     def start(self) -> None:
         self.command('initdb', ['-D', str(self.data), '-U', 'postgres', '-A', 'trust', '--encoding=UTF8', '--no-locale'])
+        # PGDG's compiled socket directory is not writable by an ordinary runner.
+        # All CI clients use loopback TCP, including the policy test cluster.
+        with (self.data / 'postgresql.conf').open('a', encoding='utf-8') as config:
+            config.write("\nunix_socket_directories = ''\n")
         self.start_attempted = True
-        self.command('pg_ctl', ['-D', str(self.data), '-l', str(self.folder / 'postgres.log'),
-                                '-o', f'-h 127.0.0.1 -p {self.port}', '-w', 'start'])
+        startup_log = self.folder / 'postgres.log'
+        try:
+            self.command('pg_ctl', ['-D', str(self.data), '-l', str(startup_log),
+                                    '-o', f'-h 127.0.0.1 -p {self.port}', '-w', 'start'])
+        except subprocess.SubprocessError:
+            # This log only covers startup, before credentials or SQL are sent.
+            if startup_log.is_file():
+                print(startup_log.read_text(encoding='utf-8', errors='replace')[-16000:], file=sys.stderr)
+            raise
 
     def stop(self) -> None:
         if self.start_attempted and (self.data / 'postmaster.pid').exists():

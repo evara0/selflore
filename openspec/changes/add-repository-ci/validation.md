@@ -16,7 +16,12 @@
 
 ## 实际GitHub验证
 
-用户已明确授权提交推送并验证首次CI，同时同步此前已提交的文档整理。实际GitHub运行尚待推送后观察；不能将上述本机Windows结果当作Ubuntu runner和PGDG安装已通过。
+用户已明确授权提交推送并验证首次CI，同时同步此前已提交的文档整理。`7474bc8`已推送到origin/main，文档整理`34141bb`同时同步。
+
+- [首次运行38870791632](https://github.com/evara0/selflore/actions/runs/38870791632)：docs通过；frontend的65项通过、2项账户测试失败；backend完成PGDG安装及冻结依赖安装，pg_ctl启动6179失败，尚未运行pytest。首次CI未通过，不能以本机结果替代。
+- 已通过用户现有Chrome登录会话的正常GitHub页面读取日志；没有提取凭据。前端错误为找不到账户页的管理按钮／新密码字段，旧入口`/knowledge`重定向与账户导航存在竞态，会员用例还在懒加载后同步查询字段。改用当前`/cards`入口并等待字段出现，保留原有功能断言。
+- 后端临时实例显式设置`unix_socket_directories = ''`，所有客户端继续使用127.0.0.1 TCP，避免依赖PGDG编译时的系统socket目录权限；仅在启动失败时输出有长度限制的本次启动日志。参见[PG18连接配置](https://www.postgresql.org/docs/18/runtime-config-connection.html#GUC-UNIX-SOCKET-DIRECTORIES)。
+- 修复后的本机复测：13项辅助测试、85处文档链接、actionlint及Lint通过，67项前端Vitest通过；后端156项通过、0跳过，两个自有实例均已停止，报告`backend-39b087e62abf4bf183730ab8d941baa1.json`。修复后的实际Actions结果继续核验。
 
 ## 验证边界
 

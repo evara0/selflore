@@ -9,7 +9,8 @@ const member = { id: '00000000-0000-0000-0000-000000000002', username: 'alice', 
 const json = (data: object, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 
 beforeEach(() => {
-  history.replaceState(null, '', '/knowledge')
+  // Account tests should not race the legacy /knowledge redirect.
+  history.replaceState(null, '', '/cards')
   HTMLDialogElement.prototype.showModal = function () { this.open = true }
   HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')) }
 })
@@ -90,7 +91,7 @@ test('member can open account and logout resets the interface', async () => {
   render(<App />)
   await waitFor(() => expect(screen.getByRole('button', { name: /alice/ })).toBeTruthy())
   fireEvent.click(screen.getByRole('button', { name: /alice/ }))
-  expect(screen.getByLabelText('新密码（至少 8 个字符）').getAttribute('minlength')).toBe('8')
+  expect((await screen.findByLabelText('新密码（至少 8 个字符）')).getAttribute('minlength')).toBe('8')
   expect(screen.queryByRole('button', { name: '管理用户' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
   await waitFor(() => expect(screen.getByRole('button', { name: '登录 / 注册' })).toBeTruthy())
