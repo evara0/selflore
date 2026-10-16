@@ -21,7 +21,9 @@
 - [首次运行38870791632](https://github.com/evara0/selflore/actions/runs/38870791632)：docs通过；frontend的65项通过、2项账户测试失败；backend完成PGDG安装及冻结依赖安装，pg_ctl启动6179失败，尚未运行pytest。首次CI未通过，不能以本机结果替代。
 - 已通过用户现有Chrome登录会话的正常GitHub页面读取日志；没有提取凭据。前端错误为找不到账户页的管理按钮／新密码字段，旧入口`/knowledge`重定向与账户导航存在竞态，会员用例还在懒加载后同步查询字段。改用当前`/cards`入口并等待字段出现，保留原有功能断言。
 - 后端临时实例显式设置`unix_socket_directories = ''`，所有客户端继续使用127.0.0.1 TCP，避免依赖PGDG编译时的系统socket目录权限；仅在启动失败时输出有长度限制的本次启动日志。参见[PG18连接配置](https://www.postgresql.org/docs/18/runtime-config-connection.html#GUC-UNIX-SOCKET-DIRECTORIES)。
-- 修复后的本机复测：13项辅助测试、85处文档链接、actionlint及Lint通过，67项前端Vitest通过；后端156项通过、0跳过，两个自有实例均已停止，报告`backend-39b087e62abf4bf183730ab8d941baa1.json`。修复后的实际Actions结果继续核验。
+- 修复后的本机复测：13项辅助测试、85处文档链接、actionlint及Lint通过，67项前端Vitest通过；后端156项通过、0跳过，两个自有实例均已停止，报告`backend-39b087e62abf4bf183730ab8d941baa1.json`。
+- 修复提交`81079489cbef3bd4684f67b4ab0a31bf95d73079`的[第二次运行38872441561](https://github.com/evara0/selflore/actions/runs/38872441561)三个job全部success：docs（116879475799）、frontend（116879475243）、backend（116879475664）。已通过公开GitHub API逐项核对依赖安装、辅助检查、组件测试、构建、PGDG安装、完整后端运行及报告上传步骤均成功；这是真实Ubuntu runner结果。
+- OpenSpec严格验证与diff检查通过。CI及修复已提交推送；原有App.css与inline-mobile-builder-credit未纳入提交，没有改生产配置、分支保护或执行部署。所有任务已完成，保留变更未归档。
 
 ## 验证边界
 
