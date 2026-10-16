@@ -65,7 +65,7 @@
 | 检查名 | 自动执行范围 |
 | --- | --- |
 | Docs and CI tools | CI辅助脚本测试；当前受Git跟踪、非OpenSpec Markdown的本地文件／图片链接及章节锚点 |
-| Frontend checks | 锁定pnpm安装、Oxlint、Vitest组件测试及TypeScript／Vite构建 |
+| Frontend checks | 锁定pnpm安装、Prettier格式检查、Oxlint、Vitest组件测试及TypeScript／Vite构建 |
 | Backend tests (PostgreSQL 18) | 锁定uv安装；自建6179和6180空实例，运行全部公开后端pytest，并拒绝失败、skip或零测试报告 |
 
 三个job独立运行，使用固定提交的Action、只读仓库权限和临时runner；不需要配置生产Secrets，不运行本机deploy工具。此工作流不设置分支保护，是否将检查设为合并必需项由仓库维护者另外配置。
@@ -140,6 +140,19 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 失败trace默认位于 `.cache/card-tests/browser-results`，部分用例另向忽略的docs或缓存目录输出截图；报告应写实际生成路径。按本文视觉审查流程另存当前证据，旧截图不能替代新检查。
 
 服务用 `Ctrl+C` 停止；PostgreSQL仅用pg_ctl停止自己创建的确切缓存data_directory，不停止其他实例或清理业务数据。截图、缓存及离线库仍需按私有资料保管。
+
+### 仅前端替身回归
+
+`apps/web/e2e/editor-boundaries.spec.ts`验证注册登录与退出、资料来源字段与重试、合集创建。请求由测试内存替身处理，不需要业务数据库，也不能替代上述真实接口闭环。
+
+先按前端说明构建，在`apps/web`的专用终端运行`pnpm exec vite preview --host 127.0.0.1 --port 24569 --strictPort`；在同目录的另一个终端运行：
+
+```powershell
+$env:SELFLORE_BROWSER_BASE_URL = 'http://127.0.0.1:24569'
+pnpm exec playwright test e2e/editor-boundaries.spec.ts
+```
+
+测试完成后关闭预览进程，并清除该专用终端中的`SELFLORE_BROWSER_BASE_URL`覆盖；完整浏览器套件仍按前节使用独立24568服务。先完成构建再运行浏览器，避免重建清空dist时读取资源失败。
 
 ## 代表性回归与记录
 

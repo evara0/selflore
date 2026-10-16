@@ -1,5 +1,5 @@
 export const cardInks = ['purple', 'blue', 'green', 'orange'] as const
-export type CardInk = typeof cardInks[number]
+export type CardInk = (typeof cardInks)[number]
 
 /** The content identity, rather than its position or review unit, owns its ink. */
 export function cardInk(id?: string | null): CardInk {

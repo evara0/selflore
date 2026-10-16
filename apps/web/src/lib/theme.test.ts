@@ -2,9 +2,12 @@ import { expect, test } from 'vitest'
 import { cardInk, cardInks, collectionInk } from './theme'
 
 test('content ink is reproducible across identity formatting, order and metadata changes', () => {
-  const cards = Array.from({ length: 20 }, (_, i) => ({ id: `de000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, title: `标题 ${i}` }))
-  const initial = new Map(cards.map(card => [card.id, cardInk(card.id)]))
-  for (const card of cards.reverse().map(card => ({ ...card, title: '已修改' }))) {
+  const cards = Array.from({ length: 20 }, (_, i) => ({
+    id: `de000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+    title: `标题 ${i}`,
+  }))
+  const initial = new Map(cards.map((card) => [card.id, cardInk(card.id)]))
+  for (const card of cards.reverse().map((card) => ({ ...card, title: '已修改' }))) {
     expect(cardInk(` ${card.id.toUpperCase()} `)).toBe(initial.get(card.id))
     expect(cardInks).toContain(cardInk(card.id))
   }

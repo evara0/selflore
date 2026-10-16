@@ -50,6 +50,7 @@ jobs:
           package_json_file: apps/web/package.json
           run_install: false
       - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
       - run: pnpm lint
       - name: Component tests
         run: |

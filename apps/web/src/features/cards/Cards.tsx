@@ -1,0 +1,420 @@
+import { PrivateImage } from '../../components/Attachments'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams, useLocation } from 'react-router-dom'
+import {
+  useApi,
+  useData,
+  useRefresh,
+  useIdentity,
+  params,
+  cardUrl,
+  clozeText,
+  type Card,
+  type Label,
+  type Page,
+  type ReviewSummary,
+} from '../../lib/workspace'
+import {
+  CardImprint,
+  Icon,
+  Markdown,
+  PageHeading,
+  Pager,
+  QueryState,
+  Tags,
+} from '../../components/Common'
+
+import { CardDetail } from './Detail'
+import { cardTypes, preferredType, rememberType } from '../../lib/card-navigation'
+import { cardInk } from '../../lib/theme'
+
+function Flashcard({ card }: { card: Card }) {
+  const location = useLocation()
+  const [reveal, setReveal] = useState(false),
+    [message, setMessage] = useState('')
+  const detail = useData<Card>(`/cards/${card.id}`, reveal)
+  const api = useApi(),
+    refresh = useRefresh()
+  async function bookmark() {
+    try {
+      await api(`/cards/${card.id}`, 'PATCH', {
+        expected_revision: card.revision,
+        is_bookmarked: !card.is_bookmarked,
+      })
+      await refresh()
+    } catch (e) {
+      setMessage((e as Error).message)
+    }
+  }
+  if (card.kind === 'reference')
+    return (
+      <article
+        className="flashcard reference-card print-card"
+        data-card-id={card.id}
+        data-card-ink={cardInk(card.id)}
+      >
+        <div className="card-meta">
+          <span>资料卡 · {card.topics[0]?.name || '未分类'}</span>
+          <button
+            aria-label={`${card.is_bookmarked ? '取消收藏' : '收藏'} ${card.title}`}
+            aria-pressed={card.is_bookmarked}
+            onClick={() => void bookmark()}
+          >
+            <Icon name="bookmark" />
+          </button>
+        </div>
+        <Link
+          className="card-title"
+          to={cardUrl(card)}
+          state={{ from: location.pathname + location.search }}
+        >
+          {card.title}
+        </Link>
+        {card.attachments?.[0] && (
+          <Link to={cardUrl(card)} state={{ from: location.pathname + location.search }}>
+            <PrivateImage attachment={card.attachments[0]} />
+          </Link>
+        )}
+        <p className="excerpt">{card.excerpt}</p>
+        <div className="card-bottom">
+          <Tags items={card.tags} />
+          <Link
+            className="reveal-link"
+            to={cardUrl(card)}
+            state={{ from: location.pathname + location.search }}
+          >
+            阅读资料 ↗
+          </Link>
+        </div>
+        <CardImprint code={card.code} />
+        {message && <p role="alert">{message}</p>}
+      </article>
+    )
+  if (card.kind === 'opinion')
+    return (
+      <article className="flashcard opinion-card print-card" data-card-id={card.id}>
+        <small>观点 · {card.topics.map((t) => t.name).join('、') || '未分类'}</small>
+        <Link
+          className="card-title"
+          to={cardUrl(card)}
+          state={{ from: location.pathname + location.search }}
+        >
+          {card.title}
+        </Link>
+        <p className="excerpt">{card.excerpt}</p>
+        <Tags items={card.tags} />
+        <p>{(card.link_count || 0) + (card.backlink_count || 0)} 个连接</p>
+        <CardImprint code={card.code} />
+      </article>
+    )
+  return (
+    <article
+      className="flashcard print-card"
+      data-card-id={card.id}
+      data-card-ink={cardInk(card.id)}
+    >
+      <div className="card-meta">
+        <span>
+          {card.topics[0]?.name || '未分类'} · {card.form === 'cloze' ? '填空' : '问答'}
+        </span>
+        <button
+          aria-label={`${card.is_bookmarked ? '取消收藏' : '收藏'} ${card.title}`}
+          aria-pressed={card.is_bookmarked}
+          onClick={() => void bookmark()}
+        >
+          <Icon name="bookmark" />
+        </button>
+      </div>
+      <Link
+        className="card-title"
+        to={cardUrl(card)}
+        state={{ from: location.pathname + location.search }}
+      >
+        {card.title}
+      </Link>
+      <p className="excerpt">{card.excerpt}</p>
+      {reveal && (
+        <div className="flash-answer">
+          <QueryState query={detail}>
+            <Markdown
+              text={
+                detail.data?.form === 'qa'
+                  ? detail.data.answer_md
+                  : clozeText(detail.data?.body_md || '', true)
+              }
+            />
+          </QueryState>
+        </div>
+      )}
+      <div className="card-bottom">
+        <Tags items={card.tags} />
+        <button className="reveal-link" aria-expanded={reveal} onClick={() => setReveal(!reveal)}>
+          {reveal ? '收起答案' : '查看答案'} <span>↗</span>
+        </button>
+      </div>
+      <CardImprint code={card.code} />
+      {message && <p role="alert">{message}</p>}
+    </article>
+  )
+}
+export default function Cards() {
+  const [search, setSearch] = useSearchParams(),
+    [view, setView] = useState('grid')
+  const q = search.get('q') || '',
+    topic = search.get('topic') || '',
+    offset = Number(search.get('offset') || 0),
+    bookmarked = search.get('bookmarked') === 'true',
+    lifecycle = search.get('lifecycle') || 'active'
+  const { session } = useIdentity(),
+    account = session?.id || 'guest'
+  const requested = search.get('type') || preferredType(account)
+  const type = cardTypes.includes(requested as (typeof cardTypes)[number]) ? requested : 'all'
+  useEffect(() => {
+    rememberType(account, type)
+    if (!search.has('type')) {
+      const next = new URLSearchParams(search)
+      next.set('type', type)
+      setSearch(next, { replace: true })
+    }
+  }, [account, type, search, setSearch])
+  const topics = useData<{ items: Label[] }>(type !== 'all' ? `/topics?kind=${type}` : '/topics'),
+    tags = useData<{ items: Label[] }>('/tags')
+  const cardParams = params({
+    kind: type === 'all' ? undefined : type,
+    kinds: type === 'all' ? 'knowledge,reference,opinion' : undefined,
+    q,
+    processing_state: search.get('state'),
+    topic_id: topic,
+    tag_id: search.get('tag'),
+    lifecycle,
+    is_bookmarked: bookmarked || undefined,
+    sort: search.get('sort') || 'updated_desc',
+    limit: 12,
+    offset,
+  })
+  const cards = useData<Page<Card>>(`/cards?${cardParams}`)
+  const summary = useData<ReviewSummary>('/reviews/summary'),
+    totals = useData<{ knowledge: number; references: number; opinions: number }>('/cards/summary')
+  function update(key: string, value: string) {
+    const next = new URLSearchParams(search)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    if (key !== 'offset') next.delete('offset')
+    setSearch(next)
+  }
+  return (
+    <>
+      <PageHeading title="卡片">
+        {type === 'knowledge' && (
+          <Link className="button primary" to="/knowledge/review">
+            开始复习 <span>→</span>
+          </Link>
+        )}
+        <Link className="button" to="/new">
+          ＋ 新建卡片
+        </Link>
+      </PageHeading>
+      <div className="workspace-layout">
+        <aside className="sidebar">
+          <p className="eyebrow">我的卡片库</p>
+          <button
+            className={!topic && !bookmarked && lifecycle === 'active' ? 'active' : ''}
+            onClick={() => setSearch({ type: 'all' })}
+          >
+            <Icon name="book" />
+            全部卡片
+            <span>
+              {(totals.data
+                ? totals.data.knowledge +
+                  (totals.data.references || 0) +
+                  (totals.data.opinions || 0)
+                : undefined) ?? '—'}
+            </span>
+          </button>
+          <button
+            className={bookmarked ? 'active' : ''}
+            onClick={() => update('bookmarked', bookmarked ? '' : 'true')}
+          >
+            <Icon name="bookmark" />
+            我的收藏
+          </button>
+          <button
+            onClick={() => update('lifecycle', lifecycle === 'archived' ? '' : 'archived')}
+            className={lifecycle === 'archived' ? 'active' : ''}
+          >
+            <Icon name="card" />
+            已归档
+          </button>
+          <div className="sidebar-divider" />
+          <p className="eyebrow">分类</p>
+          <QueryState query={topics}>
+            {topics.data?.items
+              .filter((t) => ['knowledge', 'reference', 'opinion'].includes(t.kind || ''))
+              .map((t) => (
+                <button
+                  className={topic === t.id ? 'active' : ''}
+                  key={t.id}
+                  onClick={() => {
+                    const next = new URLSearchParams(search)
+                    next.set('topic', t.id)
+                    if (t.kind) next.set('type', t.kind)
+                    next.delete('offset')
+                    setSearch(next)
+                  }}
+                >
+                  <span className="category-dot" />
+                  {t.name}
+                  {type === 'all' && t.kind && (
+                    <small>
+                      {' '}
+                      · {t.kind === 'reference' ? '资料' : t.kind === 'opinion' ? '观点' : '知识'}
+                    </small>
+                  )}
+                  <span>{t.card_count}</span>
+                </button>
+              ))}
+          </QueryState>
+          <Link className="sidebar-add" to="/new?kind=knowledge">
+            ＋ 新建知识卡片
+          </Link>
+          <Link className="sidebar-add" to="/new?kind=reference">
+            ＋ 新建资料卡
+          </Link>
+        </aside>
+        <section className="workspace-main">
+          <div className="filter-tabs" aria-label="卡片类型">
+            {[
+              ['all', '全部'],
+              ['reference', '资料'],
+              ['knowledge', '事实知识'],
+              ['opinion', '观点'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                className={type === value ? 'selected' : ''}
+                onClick={() => {
+                  const next = new URLSearchParams(search)
+                  if (value) next.set('type', value)
+                  else next.delete('type')
+                  next.delete('topic')
+                  next.delete('offset')
+                  setSearch(next)
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {type === 'knowledge' && (
+            <div className="review-strip">
+              <div>
+                <small>今日目标</small>
+                <b>
+                  {summary.data?.today_completed ?? '—'}{' '}
+                  <em>/ {summary.data?.daily_review_goal ?? '—'} 个复习单元</em>
+                </b>
+                <div className="progress-track">
+                  <span
+                    style={{
+                      width: `${summary.data ? Math.min(100, (summary.data.today_completed / summary.data.daily_review_goal) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <small>待复习</small>
+                <b>
+                  {summary.data?.due_units ?? '—'} <em>个复习单元</em>
+                </b>
+              </div>
+              <div>
+                <small>已掌握</small>
+                <b>
+                  {summary.data?.mastered_cards ?? '—'} <em>张卡片</em>
+                </b>
+              </div>
+              <Icon name="calendar" />
+            </div>
+          )}
+          {type === 'knowledge' && summary.error && <QueryState query={summary} />}
+          <div className="toolbar">
+            <select
+              aria-label="整理状态"
+              value={search.get('state') || ''}
+              onChange={(e) => update('state', e.target.value)}
+            >
+              <option value="">全部整理状态</option>
+              <option value="inbox">待整理</option>
+              <option value="organized">已整理</option>
+            </select>
+            <div className="search-box">
+              <Icon name="search" />
+              <input
+                aria-label="搜索卡片"
+                placeholder="搜索资料、知识、观点、作者或关键词…"
+                value={q}
+                onChange={(e) => update('q', e.target.value)}
+              />
+            </div>
+            <select
+              aria-label="知识标签"
+              value={search.get('tag') || ''}
+              onChange={(e) => update('tag', e.target.value)}
+            >
+              <option value="">全部标签</option>
+              {tags.data?.items.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="知识排序"
+              value={search.get('sort') || 'updated_desc'}
+              onChange={(e) => update('sort', e.target.value)}
+            >
+              <option value="updated_desc">最近更新</option>
+              <option value="created_desc">最近创建</option>
+              <option value="code_asc">编号顺序</option>
+              <option value="connections_desc">连接最多</option>
+            </select>
+            <button
+              aria-label="切换卡片布局"
+              onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
+            >
+              <Icon name="grid" />
+            </button>
+          </div>
+          <div className="section-title">
+            <h2>
+              {lifecycle === 'archived'
+                ? '已归档'
+                : topic
+                  ? topics.data?.items.find((t) => t.id === topic)?.name
+                  : bookmarked
+                    ? '收藏卡片'
+                    : '全部卡片'}{' '}
+              <small>{cards.data?.total ?? 0} 张卡片</small>
+            </h2>
+          </div>
+          <QueryState query={cards} empty={cards.data?.total === 0}>
+            <div className={`card-grid ${view === 'list' ? 'list-view' : ''}`}>
+              {cards.data?.items.map((c) => (
+                <Flashcard key={c.id} card={c} />
+              ))}
+            </div>
+            {cards.data && <Pager {...cards.data} onChange={(n) => update('offset', String(n))} />}
+          </QueryState>
+          {search.get('card') && (
+            <>
+              <button className="back-link" onClick={() => update('card', '')}>
+                ← 返回卡片
+              </button>
+              <CardDetail key={search.get('card')} id={search.get('card')!} compact />
+            </>
+          )}
+        </section>
+      </div>
+    </>
+  )
+}

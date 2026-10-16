@@ -1,0 +1,4 @@
+apps/web/src/**/*.ts text eol=lf
+apps/web/src/**/*.tsx text eol=lf
+apps/web/*.ts text eol=lf
+apps/web/.prettierrc.json text eol=lf
