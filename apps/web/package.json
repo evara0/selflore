@@ -11,8 +11,6 @@
     "test:e2e": "playwright test",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.ts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.ts\"",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"*.ts\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"*.ts\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },

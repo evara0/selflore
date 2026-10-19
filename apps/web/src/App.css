@@ -419,6 +419,13 @@
 }
 @media (max-width: 380px) { .rating-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .heading-action .button { padding: 10px; } .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (pointer: coarse) { .card-meta>button { min-height: 44px; min-width: 44px; } .reveal-link,.detail-actions button,.detail-actions a { min-height: 44px; display: inline-flex; align-items: center; } }
+.source-capture { min-width: 0; margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 8px; display: grid; gap: 12px; }
+.source-capture h3,.source-capture p { margin: 0; overflow-wrap: anywhere; }
+.source-capture label { margin: 0; }
+.source-capture input,.source-capture select { width: 100%; min-width: 0; box-sizing: border-box; }
+.source-capture-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; min-width: 0; }
+.source-capture-actions label { flex: 1 1 200px; min-width: 0; }
+.source-capture-actions button { min-height: 44px; white-space: normal; }
 /* Memo lists share the existing card workspace and mobile navigation. */
 .memo-workspace,.memo-editor{padding:clamp(16px,3vw,32px);min-width:0}
 .memo-card{padding:22px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-wrap:anywhere}

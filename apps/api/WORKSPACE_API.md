@@ -8,6 +8,7 @@
 | --- | --- |
 | `GET /cards`、`POST /cards` | 本人摘要分页 / 创建卡片 |
 | `GET /cards/summary` | 活跃知识、观点、资料及备忘数量；待整理与收藏不计备忘 |
+| `POST /sources/resolve` | 公开来源建议，不创建或修改卡片 |
 | `GET/PATCH /cards/{id}` | 完整详情 / 修订编辑 |
 | `POST /cards/{id}/lifecycle` | archive / trash / restore |
 | `GET /cards/{id}/links` | outgoing / incoming，按目标去重并返回 origins |
@@ -65,8 +66,16 @@ PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，�
 
 ## 资料卡与附件
 
+获取来源建议见[来源链接解析](#来源链接解析)，图片仍由用户上传。
+
 `kind=reference`，`form=null`，`body_md`为原始摘录，`note_md`为个人说明；原始摘录或至少一个ready附件必需。来源扩展为source_author、source_publisher、source_platform、source_published_on。`attachments`为包含id、caption、alt_text、creator_name的有序数组，每卡最多10图；PATCH用expected_revision整组原子替换。
 
 `GET /api/cards?kinds=knowledge,reference`多类型过滤，与kind互斥。单独kind=knowledge保持旧语义。摘要新增references，合集新增reference_count，活动筛选支持reference。
 
 `GET /api/attachments/config`提供可用状态和实际限制；`POST /api/attachments`使用multipart（file、client_request_id、file_sha256），带现有Cookie／Origin／CSRF。`GET /api/attachments/{id}`及`/content?variant=original|thumbnail`仅本人可读，非本人及未知ID一致404，未登录401。图片private no-store、nosniff，不公开静态媒体目录。图片上传不写学习事件。
+
+## 来源链接解析
+
+`POST /api/sources/resolve`，请求`{"url":"https://example.com/article","mode":"auto"}`；mode为auto（默认）或webpage（强制普通网页）。要求会话、受信任Origin及CSRF，单账号进程内10次/分钟，并发受限返回429；非法／不安全输入422。
+
+响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../SOURCE_CAPTURE.md)。

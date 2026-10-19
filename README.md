@@ -17,7 +17,7 @@ SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理�
 | 合集 | 将不同类型卡片编排在一起，集中浏览与翻阅 |
 | 我的 | 个人资料、内容积累与学习足迹 |
 
-- **资料卡**：保存外部摘录或图片，记录来源链接、作者等信息；原材料与自己的说明分开，收录不代表认同。
+- **资料卡**：保存外部摘录或图片，粘贴普通网页或X链接后尝试补全来源；原材料与自己的说明分开，收录不代表认同。
 - **事实知识**：用问答或填空组织知识，支持 FSRS 间隔复习。
 - **原子观点**：记录自己的想法，通过稳定编号和双向链接连接其他卡片。
 - **备忘**：记录行动和学习安排；资料卡、观点及备忘均不进入知识复习。
@@ -90,6 +90,7 @@ openspec/
 | 接口与数据交互 | [工作区 API](apps/api/WORKSPACE_API.md) |
 | 仓库CI、测试与前端视觉审查 | [自动CI](apps/api/WORKSPACE_TESTING.md#仓库自动-ci) · [本地验证](apps/api/WORKSPACE_TESTING.md) |
 | 图片上传、存储及排查 | [MEDIA_STORAGE.md](MEDIA_STORAGE.md) |
+| 资料链接补全、失败回退及平台扩展 | [SOURCE_CAPTURE.md](SOURCE_CAPTURE.md) |
 | 开发库备份与恢复演练 | [DATABASE_BACKUP.md](DATABASE_BACKUP.md) |
 | 日常维护与排障 | [MAINTENANCE.md](MAINTENANCE.md) |
 

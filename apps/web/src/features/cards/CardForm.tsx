@@ -16,6 +16,7 @@ import { CardPicker } from '../../components/Selectors'
 import { useUnsaved } from '../../components/useUnsaved'
 import { cardInk } from '../../lib/theme'
 import CardSources from './CardSources'
+import SourceCapture from './SourceCapture'
 
 export default function CardForm({
   original,
@@ -53,6 +54,7 @@ export default function CardForm({
   const [revision, setRevision] = useState(original?.revision)
   const attempt = useRef<{ json: string; id: string } | null>(null)
   const uploader = useRef<ImageUploaderHandle>(null)
+  const sourceTouched = useRef(new Set<string>())
   const permitLeave = useUnsaved(dirty)
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -154,6 +156,35 @@ export default function CardForm({
             ))}
             <Link to="/new?kind=memo">备忘 / 清单</Link>
           </div>
+          {kind === 'reference' && (
+            <SourceCapture
+              url={sourceUrl}
+              onUrlChange={(value) => {
+                setSourceUrl(value)
+                setDirty(true)
+              }}
+              onApply={(fields) => {
+                const fill = (
+                  field: string,
+                  setter: (update: (value: string) => string) => void,
+                  suggestion?: string,
+                ) => {
+                  if (!sourceTouched.current.has(field))
+                    setter((value) => (value.trim() ? value : suggestion || value))
+                }
+                fill('title', setTitle, fields.source_title)
+                fill('sourceTitle', setSourceTitle, fields.source_title)
+                fill('author', setAuthor, fields.source_author)
+                fill('publisher', setPublisher, fields.source_publisher)
+                fill('platform', setPlatform, fields.source_platform)
+                fill('published', setPublished, fields.source_published_on)
+                setDirty(true)
+              }}
+              onBegin={() => {
+                sourceTouched.current = new Set()
+              }}
+            />
+          )}
           <label>
             标题
             <input
@@ -161,7 +192,10 @@ export default function CardForm({
               maxLength={200}
               value={title}
               placeholder="给这张卡片一个清晰的标题"
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                sourceTouched.current.add('title')
+                setTitle(e.target.value)
+              }}
             />
           </label>
           {kind === 'knowledge' && (
@@ -304,6 +338,7 @@ export default function CardForm({
           tags={tags}
           source={{ sourceTitle, sourceUrl, locator, author, publisher, platform, published }}
           onSourceChange={(field, value) => {
+            sourceTouched.current.add(field)
             const setters = {
               sourceTitle: setSourceTitle,
               sourceUrl: setSourceUrl,
@@ -314,6 +349,7 @@ export default function CardForm({
               published: setPublished,
             }
             setters[field](value)
+            setDirty(true)
           }}
           onLabelsChange={(t, g) => {
             setTopics(t)

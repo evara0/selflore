@@ -143,7 +143,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 
 ### 仅前端替身回归
 
-`apps/web/e2e/editor-boundaries.spec.ts`验证注册登录与退出、资料来源字段与重试、合集创建。请求由测试内存替身处理，不需要业务数据库，也不能替代上述真实接口闭环。
+`apps/web/e2e/editor-boundaries.spec.ts`验证注册登录与退出、资料来源字段与重试、合集创建，以及快速收录的手改保留、回退、失败后保存与320／390／1280布局。请求由测试内存替身处理，不需要业务数据库，也不能替代真实接口闭环。来源端点鉴权、网络安全和解析测试为`apps/api/tests/test_source_capture.py`；真实外站成功率须单独实测。
 
 先按前端说明构建，在`apps/web`的专用终端运行`pnpm exec vite preview --host 127.0.0.1 --port 24569 --strictPort`；在同目录的另一个终端运行：
 
@@ -151,6 +151,8 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 $env:SELFLORE_BROWSER_BASE_URL = 'http://127.0.0.1:24569'
 pnpm exec playwright test e2e/editor-boundaries.spec.ts
 ```
+
+可显式设置`SELFLORE_CAPTURE_DIR`为本次独立截图目录（例如项目`.cache/frontend-visual-review/<run-id>`的绝对路径）；未设置时输出至测试专用visual目录。截图生成后仍须按前文实际打开查看。
 
 测试完成后关闭预览进程，并清除该专用终端中的`SELFLORE_BROWSER_BASE_URL`覆盖；完整浏览器套件仍按前节使用独立24568服务。先完成构建再运行浏览器，避免重建清空dist时读取资源失败。
 

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { demoId, readDemo } from '../src/lib/demo'
 import type { Card, Collection } from '../src/lib/workspace'
+import { mkdir } from 'node:fs/promises'
+import path from 'node:path'
 
 const user = {
   id: demoId(900),
@@ -68,7 +70,14 @@ async function fixture(page: Page, initiallyLoggedIn = true) {
     if (path === '/auth/config') return route.fulfill({ json: { registration_enabled: true } })
     if (path === '/attachments/config')
       return route.fulfill({
-        json: { is_available: true, max_bytes: 10485760, max_images: 10, formats: ['image/png'] },
+        json: {
+          is_available: true,
+          max_bytes: 10485760,
+          max_pixels: 40000000,
+          max_edge: 20000,
+          max_images: 10,
+          formats: ['image/png'],
+        },
       })
     if (/^\/attachments\/[^/]+\/content$/.test(path))
       return route.fulfill({
@@ -175,4 +184,179 @@ test('collection creation keeps its own route and save fields', async ({ page })
     cover_style: 'lines',
     cover_color: 'clay',
   })
+})
+
+for (const width of [320, 390, 1280]) {
+  test(`quick capture preserves manual fields, handles fallback and saves at ${width}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const writes = await fixture(page)
+    let fail = false
+    let finish: (() => void) | undefined
+    await page.route('**/api/sources/resolve', async (route) => {
+      if (fail) return route.fulfill({ status: 503, json: { detail: '合成获取失败' } })
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
+      return route.fulfill({
+        json: {
+          category: 'x',
+          method: 'webpage',
+          status: 'partial',
+          fallback_reason: 'timeout',
+          fields: {
+            source_title: '合成资料标题',
+            source_author: '建议作者',
+            source_platform: 'X',
+            source_published_on: '2026-10-19',
+          },
+        },
+      })
+    })
+    const folder = process.env.SELFLORE_CAPTURE_DIR || testInfo.outputPath('visual')
+    await mkdir(folder, { recursive: true })
+    const capture = async (name: string) => {
+      await page.evaluate(() => document.fonts.ready)
+      await expect(page.getByRole('region', { name: '资料卡快速收录' })).toBeVisible()
+      await page.getByRole('region', { name: '资料卡快速收录' }).scrollIntoViewIfNeeded()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      )
+      expect(
+        await page.getByRole('region', { name: '资料卡快速收录' }).evaluate((section) => {
+          const bounds = section.getBoundingClientRect()
+          return [...section.querySelectorAll('input,select,button')].every((control) => {
+            const box = control.getBoundingClientRect()
+            return box.left >= bounds.left && box.right <= bounds.right
+          })
+        }),
+      ).toBe(true)
+      await page.screenshot({ path: path.join(folder, `capture-${width}-${name}.png`) })
+    }
+    await page.goto('/new?kind=reference')
+    await page.getByLabel('收录链接', { exact: true }).fill('https://x.com/example/status/123')
+    await page.getByLabel('标题', { exact: true }).fill('保留我的标题')
+    await page.getByLabel('原始摘录', { exact: true }).fill('合成摘录，不写入业务库。')
+    await capture('ready')
+    await page.getByRole('button', { name: '获取来源信息', exact: true }).click()
+    await expect.poll(() => !!finish).toBe(true)
+    await page.getByLabel('来源作者', { exact: true }).fill('请求中手改作者')
+    finish!()
+    await expect(page.getByRole('region', { name: '资料卡快速收录' })).toContainText(
+      '已回退普通网页',
+    )
+    await expect(page.getByLabel('标题', { exact: true })).toHaveValue('保留我的标题')
+    await expect(page.getByLabel('来源作者', { exact: true })).toHaveValue('请求中手改作者')
+    await expect(page.getByLabel('来源标题', { exact: true })).toHaveValue('合成资料标题')
+    await expect(page.getByLabel('来源平台', { exact: true })).toHaveValue('X')
+    await capture('fallback')
+    fail = true
+    await page.getByLabel('获取方式', { exact: true }).selectOption('webpage')
+    await page.getByRole('button', { name: '获取来源信息', exact: true }).click()
+    await expect(page.getByRole('region', { name: '资料卡快速收录' })).toContainText(
+      '暂时无法获取来源',
+    )
+    await capture('error')
+    await page.getByLabel('收录链接').focus()
+    await page.keyboard.press('Tab')
+    await expect(page.getByLabel('获取方式')).toBeFocused()
+    const save = page.getByRole('button', { name: '保存卡片', exact: true })
+    await save.scrollIntoViewIfNeeded()
+    await expect(save).toBeInViewport()
+    await save.click()
+    await expect(page.getByRole('status').filter({ hasText: '合成临时错误' })).toBeVisible()
+    await save.click()
+    await expect(page.getByRole('heading', { name: '保留我的标题', exact: true })).toBeVisible()
+    expect(writes.filter((write) => write.path === '/cards').at(-1)?.body).toMatchObject({
+      source_url: 'https://x.com/example/status/123',
+      source_author: '请求中手改作者',
+      source_title: '合成资料标题',
+      source_platform: 'X',
+      source_published_on: '2026-10-19',
+      body_md: '合成摘录，不写入业务库。',
+      attachments: [],
+    })
+  })
+}
+
+test('ordinary knowledge editor does not show quick capture', async ({ page }) => {
+  await fixture(page)
+  await page.goto('/new?kind=knowledge')
+  await expect(page.getByLabel('问题', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '资料卡快速收录' })).toHaveCount(0)
+})
+
+test('capture fills a blank title but preserves fields cleared during the request', async ({
+  page,
+}) => {
+  await fixture(page)
+  let finish: (() => void) | undefined
+  await page.route('**/api/sources/resolve', async (route) => {
+    await new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    return route.fulfill({
+      json: {
+        category: 'webpage',
+        method: 'webpage',
+        status: 'success',
+        fallback_reason: null,
+        fields: {
+          source_title: '网页标题',
+          source_author: '作者建议',
+          source_platform: '站点',
+          source_publisher: '明确发布者',
+        },
+      },
+    })
+  })
+  await page.goto('/new?kind=reference')
+  await page.getByLabel('收录链接').fill('https://example.com/article')
+  await page.getByLabel('来源作者', { exact: true }).fill('待清空')
+  await page.getByRole('button', { name: '获取来源信息', exact: true }).click()
+  await expect.poll(() => !!finish).toBe(true)
+  await page.getByLabel('来源作者', { exact: true }).fill('')
+  finish!()
+  await expect(page.getByLabel('标题', { exact: true })).toHaveValue('网页标题')
+  await expect(page.getByLabel('来源作者', { exact: true })).toHaveValue('')
+  await expect(page.getByLabel('发布／转载者', { exact: true })).toHaveValue('明确发布者')
+})
+
+test('existing reference retains its content when source lookup has no metadata', async ({
+  page,
+}, testInfo) => {
+  await fixture(page)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.route('**/api/sources/resolve', (route) =>
+    route.fulfill({
+      json: {
+        category: 'webpage',
+        method: 'webpage',
+        status: 'unavailable',
+        fallback_reason: null,
+        fields: {},
+      },
+    }),
+  )
+  await page.goto('/cards/' + demoId(10) + '/edit')
+  await expect(page.getByRole('heading', { name: '编辑卡片', exact: true })).toBeVisible()
+  const originalTitle = await page.getByLabel('标题', { exact: true }).inputValue()
+  const originalExcerpt = await page
+    .getByRole('textbox', { name: '原始摘录', exact: true })
+    .inputValue()
+  await page.getByLabel('收录链接').fill('https://example.com/existing')
+  await page.getByRole('button', { name: '获取来源信息', exact: true }).click()
+  await expect(page.getByRole('region', { name: '资料卡快速收录' })).toContainText(
+    '未获取到可用信息',
+  )
+  await expect(page.getByLabel('标题', { exact: true })).toHaveValue(originalTitle)
+  await expect(page.getByRole('textbox', { name: '原始摘录', exact: true })).toHaveValue(
+    originalExcerpt,
+  )
+  const folder = process.env.SELFLORE_CAPTURE_DIR || testInfo.outputPath('visual')
+  await mkdir(folder, { recursive: true })
+  await page.getByRole('region', { name: '资料卡快速收录' }).scrollIntoViewIfNeeded()
+  await page.evaluate(() => document.fonts.ready)
+  await page.screenshot({ path: path.join(folder, 'existing-390-unavailable.png') })
 })

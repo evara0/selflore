@@ -137,7 +137,8 @@ test('login removes samples and expired session removes private profile from the
   fireEvent.click(
     within(screen.getByRole('navigation', { name: '主导航' })).getByRole('link', { name: '我的' }),
   )
-  await screen.findByRole('heading', { name: '私有资料' })
+  // The profile route is lazy-loaded; keep the same Windows import budget used above.
+  await screen.findByRole('heading', { name: '私有资料' }, { timeout: 5000 })
   fireEvent(window, new Event('session-expired'))
   await screen.findByRole('heading', { name: '演示账号' })
   expect(screen.queryByText('只属于账号的资料')).toBeNull()
