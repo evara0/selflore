@@ -4,7 +4,7 @@ from app.repositories.workspace import many, one, run, owned, revision, fail
 
 
 def items(db, owner, card_id):
-    rows = many(db, '''SELECT id,text,is_completed,completed_at FROM app.memo_items
+    rows = many(db, '''SELECT id,text,extra_values,is_completed,completed_at FROM app.memo_items
         WHERE owner_id=%s AND memo_card_id=%s ORDER BY position''', (owner,card_id))
     for row in rows:
         row['targets'] = many(db, '''SELECT c.id,c.title,c.kind,c.lifecycle FROM app.memo_item_links l
@@ -15,7 +15,7 @@ def items(db, owner, card_id):
 
 
 def inputs(rows):
-    return [{key: row[key] for key in ('id','text','is_completed','target_ids')} for row in rows]
+    return [{key: row[key] for key in ('id','text','extra_values','is_completed','target_ids')} for row in rows]
 
 
 def sync(db, owner, card_id, data):
@@ -30,16 +30,21 @@ def sync(db, owner, card_id, data):
         fail(422,'self_link','不能关联所属清单自身')
     if targets and len(many(db,'SELECT id FROM app.cards WHERE owner_id=%s AND id=ANY(%s::uuid[])',(owner,list(targets)))) != len(targets):
         fail(404,'not_found','关联不存在或不可用')
+    previous = {(row['item_id'],row['target_card_id']) for row in many(db,
+        'SELECT item_id,target_card_id FROM app.memo_item_links WHERE owner_id=%s AND memo_card_id=%s',(owner,card_id))}
+    nonknowledge = {row['id'] for row in many(db,"SELECT id FROM app.cards WHERE owner_id=%s AND id=ANY(%s::uuid[]) AND kind<>'knowledge'",(owner,list(targets)))} if targets else set()
+    if any(target in nonknowledge and (item.id,target) not in previous for item in data.memo_items for target in item.target_ids):
+        fail(422,'knowledge_required','新增条目关联请选择事实知识；已有其他关联可保留')
     run(db,'DELETE FROM app.memo_items WHERE owner_id=%s AND memo_card_id=%s AND NOT(id=ANY(%s::uuid[]))',(owner,card_id,ids))
     for position, item in enumerate(data.memo_items):
         before = old.get(item.id)
         completed = (before['completed_at'] if before and before['is_completed'] else datetime.now(timezone.utc)) if item.is_completed else None
         if before:
-            run(db,'''UPDATE app.memo_items SET text=%s,position=%s,is_completed=%s,completed_at=%s,updated_at=now()
-                WHERE owner_id=%s AND memo_card_id=%s AND id=%s''',(item.text,position,item.is_completed,completed,owner,card_id,item.id))
+            run(db,'''UPDATE app.memo_items SET text=%s,extra_values=%s,position=%s,is_completed=%s,completed_at=%s,updated_at=now()
+                WHERE owner_id=%s AND memo_card_id=%s AND id=%s''',(item.text,item.extra_values,position,item.is_completed,completed,owner,card_id,item.id))
         else:
-            run(db,'''INSERT INTO app.memo_items(id,owner_id,memo_card_id,text,position,is_completed,completed_at)
-                VALUES(%s,%s,%s,%s,%s,%s,%s)''',(item.id,owner,card_id,item.text,position,item.is_completed,completed))
+            run(db,'''INSERT INTO app.memo_items(id,owner_id,memo_card_id,text,extra_values,position,is_completed,completed_at)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s)''',(item.id,owner,card_id,item.text,item.extra_values,position,item.is_completed,completed))
         run(db,'DELETE FROM app.memo_item_links WHERE owner_id=%s AND item_id=%s',(owner,item.id))
         for target in item.target_ids:
             run(db,'INSERT INTO app.memo_item_links(owner_id,memo_card_id,item_id,target_card_id) VALUES(%s,%s,%s,%s)',(owner,card_id,item.id,target))
@@ -91,11 +96,11 @@ def listing(db, owner, *, is_completed=False, q=None, limit=24, offset=0, tag_id
     where+=tag_where; args.extend(tag_values)
     if q:
         pattern='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
-        where+=" AND (c.title ILIKE %s ESCAPE '\\' OR i.text ILIKE %s ESCAPE '\\')"
-        args.extend([pattern,pattern])
+        where+=" AND (c.title ILIKE %s ESCAPE '\\' OR i.text ILIKE %s ESCAPE '\\' OR array_to_string(i.extra_values,' ') ILIKE %s ESCAPE '\\')"
+        args.extend([pattern,pattern,pattern])
     source=' FROM app.memo_items i JOIN app.cards c ON c.owner_id=i.owner_id AND c.id=i.memo_card_id'
     total=one(db,'SELECT count(*) AS n'+source+where,args)['n']
-    rows=many(db,'''SELECT i.id,i.text,i.is_completed,i.completed_at,c.id AS memo_card_id,c.title AS memo_title,c.revision'''+source+where+
+    rows=many(db,'''SELECT i.id,i.text,i.extra_values,i.is_completed,i.completed_at,c.memo_columns,c.memo_column_count,c.id AS memo_card_id,c.title AS memo_title,c.revision'''+source+where+
         ' ORDER BY c.updated_at DESC,c.id,i.position,i.id LIMIT %s OFFSET %s',(*args,limit,offset))
     for row in rows:
         row['targets']=many(db,'''SELECT c.id,c.title,c.kind,c.lifecycle FROM app.memo_item_links l JOIN app.cards c

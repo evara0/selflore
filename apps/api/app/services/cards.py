@@ -14,7 +14,7 @@ from app.schemas.workspace import CardContent
 from app.services.content import references, cloze_indices
 from app.services.scheduling import fresh, VERSION
 
-FIELDS = ('memo_format','kind','form','title','question_md','answer_md','body_md','note_md','source_title','source_url','source_locator','source_author','source_publisher','source_platform','source_published_on','processing_state','is_bookmarked')
+FIELDS = ('memo_columns','memo_column_count','memo_format','kind','form','title','question_md','answer_md','body_md','note_md','source_title','source_url','source_locator','source_author','source_publisher','source_platform','source_published_on','processing_state','is_bookmarked')
 SELECT = """SELECT c.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
       FROM app.card_tags ct JOIN app.tags t ON t.owner_id=ct.owner_id AND t.id=ct.tag_id
@@ -38,7 +38,7 @@ def event(db, owner, kind, row, *, collection=False, now=None):
 
 
 def search_text(row, code):
-    item_text = '\n'.join(str(item.get('text','')) for item in row.get('memo_items',[]))
+    item_text = '\n'.join(str(item.get('text',''))+'\n'+'\n'.join(item.get('extra_values',[])) for item in row.get('memo_items',[]))
     return item_text + '\n' + '\n'.join(str(row.get(key) or '') for key in ('title','question_md','answer_md','body_md','note_md','source_title','source_locator','source_author','source_publisher','source_platform')) + '\n' + code
 
 
@@ -183,6 +183,16 @@ def create_card(db,owner,data):
     if data.kind in ('knowledge','opinion') and all(values[key] in (None,'',[]) for key in extensions):
         legacy={key:value for key,value in data.model_dump(mode='json').items() if key not in extensions}
         compatible.add(digest(legacy))
+    if data.memo_columns == ['条目','字段 2','字段 3'] and data.memo_column_count == 1 and all(i.extra_values == ['',''] for i in data.memo_items):
+        legacy_data=data.model_dump(mode='json',exclude={'memo_columns','memo_column_count'})
+        for item in legacy_data['memo_items']: item.pop('extra_values',None)
+        for no_taxonomy in (False,True):
+            candidate=dict(legacy_data)
+            if no_taxonomy: candidate.pop('taxonomy_mode',None)
+            compatible.add(digest(candidate))
+            for excluded in (('memo_format','memo_items'),('memo_format','memo_items','note_md','attachments','source_author','source_publisher','source_platform','source_published_on')):
+                if all(candidate.get(k) in (None,'',[]) for k in excluded):
+                    compatible.add(digest({k:v for k,v in candidate.items() if k not in excluded}))
     old=one(db,'SELECT id,creation_request_digest FROM app.cards WHERE owner_id=%s AND client_request_id=%s',(owner,data.client_request_id))
     if old:
         if old['creation_request_digest'] not in compatible: fail(409,'request_conflict','请求标识已用于不同内容')
@@ -222,6 +232,12 @@ def edit_card(db,owner,card_id,patch):
         payload['memo_items']=memos.inputs(before['memo_items'])
         original=CardContent.model_validate(payload).model_dump(mode='json')
         payload.update(patch.model_dump(exclude_unset=True,exclude={'expected_revision'}))
+        # Omitted extension fields from older clients must not erase row data.
+        if patch.memo_items is not None:
+            old_items={str(item['id']):item for item in before['memo_items']}
+            for supplied,merged in zip(patch.memo_items,payload['memo_items']):
+                if 'extra_values' not in supplied.model_fields_set and str(supplied.id) in old_items:
+                    merged['extra_values']=old_items[str(supplied.id)]['extra_values']
         try:
             data=CardContent.model_validate(payload)
         except (ValidationError,ValueError):

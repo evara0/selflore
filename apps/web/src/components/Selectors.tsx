@@ -16,13 +16,15 @@ import { QueryState } from './Common'
 export function CardPicker({
   onSelect,
   excluded = [],
+  kind,
 }: {
   onSelect: (card: Card) => void
   excluded?: string[]
+  kind?: string
 }) {
   const [q, setQ] = useState('')
   const [offset, setOffset] = useState(0)
-  const query = useData<Page<Card>>(`/cards?${params({ q, limit: 20, offset })}`)
+  const query = useData<Page<Card>>(`/cards?${params({ q, kind, limit: 20, offset })}`)
   return (
     <div className="card-picker">
       <input
@@ -37,7 +39,7 @@ export function CardPicker({
       <QueryState query={query}>
         <div className="picker-results">
           {query.data?.items
-            .filter((c) => !excluded.includes(c.id))
+            .filter((c) => !excluded.includes(c.id) && (!kind || c.kind === kind))
             .map((c) => (
               <button type="button" key={c.id} onClick={() => onSelect(c)}>
                 <b>{c.title}</b>

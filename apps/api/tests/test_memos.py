@@ -68,8 +68,14 @@ def test_completion_noop_conflict_reopen_and_edit_preserve():
 
 def test_reorder_links_sources_and_restoration():
     http=account(); target,_=create(http,'reference',body_md='原始资料')
-    first=item(target_ids=[target['id']]); second=item('第二项',target_ids=[target['id']],is_completed=True)
+    first=item(); second=item('第二项',is_completed=True)
     card,_=memo(http,[first,second],body_md=f"[[{target['id']}|资料]]")
+    # Seed relationships created before knowledge-only row selection.
+    with psycopg.connect(os.environ['SELFLORE_TEST_MIGRATOR_DSN']) as db:
+        db.execute('SET LOCAL ROLE selflore_dev_owner')
+        owner=db.execute('SELECT owner_id FROM app.cards WHERE id=%s',(card['id'],)).fetchone()[0]
+        for row in (first,second):
+            db.execute('INSERT INTO app.memo_item_links(owner_id,memo_card_id,item_id,target_card_id) VALUES(%s,%s,%s,%s)',(owner,card['id'],row['id'],target['id']))
     assert http.post(f"/api/cards/{card['id']}/links/{target['id']}",json={'expected_revision':card['revision']},headers=csrf(http)).status_code==200
     card=http.get(f"/api/cards/{card['id']}").json()
     links=http.get(f"/api/cards/{target['id']}/links").json()['incoming']

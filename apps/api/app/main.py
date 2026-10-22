@@ -49,7 +49,7 @@ def create_app(web_dist_dir: Path = WEB_DIST_DIR) -> FastAPI:
         from app.schema_capability import ready
         with psycopg.connect(os.environ['SELFLORE_DATABASE_URL'],connect_timeout=5) as connection:
             if not ready(connection):
-                raise RuntimeError('缺少统一标签结构，请单独执行迁移；启动不会自动迁移')
+                raise RuntimeError('缺少统一标签或多字段清单结构，请单独执行迁移；启动不会自动迁移')
 
     @asynccontextmanager
     async def lifespan(app):

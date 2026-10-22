@@ -68,7 +68,6 @@ test('four editors persist shared tags, empty capture, old URLs and mixed client
     }
     if (kind === 'reference') await page.getByLabel('原始摘录', { exact: true }).fill('原始材料')
     if (kind === 'opinion') await page.getByLabel('观点正文', { exact: true }).fill('独立观点')
-    if (kind === 'memo') await page.getByText('标签与来源（可选）', { exact: true }).click()
     const input = page.getByRole('textbox', { name: '搜索标签' })
     await input.fill('人工智能')
     await input.press('Enter')
@@ -279,8 +278,6 @@ test('current build visual matrix and selector failure states', async ({ page })
       await expect(page.getByText('正在加载页面…', { exact: true })).toHaveCount(0)
       if (name.startsWith('edit-')) {
         await expect(page.getByLabel('标题', { exact: true })).toBeVisible()
-        if (name === 'edit-memo-empty')
-          await page.getByText('标签与来源（可选）', { exact: true }).click()
         await expect(page.getByRole('textbox', { name: '搜索标签' })).toBeVisible()
       } else if (name.startsWith('detail-'))
         await expect(page.locator('.card-detail')).toBeVisible()

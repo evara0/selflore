@@ -33,12 +33,15 @@ export type MemoTarget = { id: string; title: string; kind: string; lifecycle?: 
 export type MemoItem = {
   id: string
   text: string
+  extra_values?: string[]
   is_completed: boolean
   completed_at?: string | null
   target_ids: string[]
   targets?: MemoTarget[]
 }
 export type Card = {
+  memo_columns?: string[]
+  memo_column_count?: number
   memo_format?: 'note' | 'checklist' | null
   memo_items?: MemoItem[]
   memo_progress?: { total: number; completed: number }

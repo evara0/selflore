@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   useApi,
@@ -10,6 +10,27 @@ import {
   type MemoTarget,
 } from '../lib/workspace'
 import { Markdown } from './Common'
+
+export function MemoExtraFields({
+  item,
+  columns,
+  count = 1,
+}: {
+  item: MemoItem
+  columns?: string[]
+  count?: number
+}) {
+  return (
+    <dl className="memo-extra-fields">
+      {(item.extra_values || []).slice(0, count - 1).map((value, index) => (
+        <div key={index}>
+          <dt>{columns?.[index + 1] || `字段 ${index + 2}`}</dt>
+          <dd>{value || '—'}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
 
 export function TargetLinks({ targets }: { targets?: MemoTarget[] }) {
   return (
@@ -77,22 +98,47 @@ export default function MemoContent({
           {requested && !items.some((i) => i.id === requested) && (
             <p role="status">该条目已不可用，仍可查看所属清单。</p>
           )}
-          <ul className="memo-items" aria-label="清单条目">
+          <ul
+            className="memo-items tabular-read"
+            aria-label="清单条目"
+            style={{ '--memo-columns': card.memo_column_count || 1 } as CSSProperties}
+          >
+            <li className="checklist-table-heading" aria-hidden="true">
+              <span title="完成状态">✓</span>
+              {(card.memo_columns || ['条目'])
+                .slice(0, card.memo_column_count || 1)
+                .map((name, index) => (
+                  <span key={index}>{name}</span>
+                ))}
+            </li>
             {items.map((item) => (
               <li
                 id={`memo-item-${item.id}`}
                 key={item.id}
                 className={requested === item.id ? 'memo-item-highlight' : ''}
               >
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={item.is_completed}
-                    disabled={readOnly || pending || card.lifecycle !== 'active'}
-                    onChange={() => void complete(item)}
+                <div className="checklist-read-fields">
+                  <label className="checklist-read-main">
+                    <input
+                      type="checkbox"
+                      aria-label={item.text}
+                      checked={item.is_completed}
+                      disabled={readOnly || pending || card.lifecycle !== 'active'}
+                      onChange={() => void complete(item)}
+                    />
+                    <span>
+                      <small className="mobile-field-name">
+                        {card.memo_columns?.[0] || '条目'}
+                      </small>
+                      <span className={item.is_completed ? 'completed-text' : ''}>{item.text}</span>
+                    </span>
+                  </label>
+                  <MemoExtraFields
+                    item={item}
+                    columns={card.memo_columns}
+                    count={card.memo_column_count}
                   />
-                  <span className={item.is_completed ? 'completed-text' : ''}>{item.text}</span>
-                </label>
+                </div>
                 <TargetLinks targets={item.targets} />
               </li>
             ))}

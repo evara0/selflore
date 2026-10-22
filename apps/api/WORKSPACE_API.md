@@ -49,7 +49,7 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 
 ## 备忘与清单
 
-kind=memo、form=null，memo_format为note或checklist，创建后不可变。标题必填，正文body_md可空；note只需标题，checklist需要1–200个memo_items。条目输入为id（客户端生成的稳定UUID）、text（去空白后1–2000字符）、is_completed、target_ids（最多20个本人卡片）。顺序由输入数组决定。备忘不能包含附件、分类或知识问答字段；标签和来源可选。
+kind=memo、form=null，memo_format为note或checklist，创建后不可变。标题必填，正文body_md可空；note只需标题，checklist需要1–200个memo_items。条目输入为id（客户端生成的稳定UUID）、text（去空白后1–2000字符）、extra_values（固定两个可空文本，各最多2000字符）、is_completed、target_ids（最多20个本人卡片；新增仅限事实知识，同一行已有其他类型关系可保留）。顺序由输入数组决定。备忘不能包含附件、分类或知识问答字段；标签和来源可选。
 
 PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，显式数组按稳定ID整体更新，未改完成状态时保留服务器完成时间。创建仍使用client_request_id幂等重试。详情返回memo_items及派生memo_progress。
 
@@ -63,6 +63,12 @@ PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，�
 父修订冲突返回409；同修订且同完成状态不重复写活动。归档或回收站备忘不能编辑或勾选，恢复保留原条目和时间。链接合并正文、手动及条目来源，按目标去重并保留条目定位。合集中的清单只读；备忘有独立积累与活动，不增加复习单元、掌握数或学习连续天数。
 
 页面规范地址为/cards、/cards/:id、/memos和/memos/:id；原/knowledge、知识及资料详情、/opinions?card=地址保留适配。四主导航为卡片、备忘、合集、我的。
+
+### 多字段清单兼容约定
+
+清单的memo_columns始终保存三个1–40字符列名，默认`["条目","字段 2","字段 3"]`；memo_column_count为1–3，默认1。text是首列主要文字，extra_values依次对应第二／第三列，勾选不计入内容字段。减少count仅隐藏，不删除名称和值；界面增加count后恢复。详情、合集阅读及未完成事项返回全部槽位数据（展示按count），搜索覆盖全部槽位，包括隐藏值。旧单文本请求仍有效；旧PATCH按稳定行ID保留省略的extra_values，显式`["",""]`用于清空，删除行仍删除其字段和关系。
+
+行内知识复用`POST /cards`，kind固定knowledge，沿用qa／cloze规则和client_request_id幂等重试。知识创建和父清单保存是独立事务：创建成功后仍须保存清单；取消或父保存失败不删除已建知识。界面保留父草稿和当前行，但关闭／刷新未保存页面仍会丢失草稿，应先保存。勾选不改变知识调度或掌握状态。
 
 ## 资料卡与附件
 

@@ -22,8 +22,16 @@ class AttachmentLink(Input):
 class MemoItem(Input):
     id: UUID
     text: str = Field(min_length=1, max_length=2000)
+    extra_values: list[str] = Field(default_factory=lambda: ['', ''], min_length=2, max_length=2)
     is_completed: bool = False
     target_ids: list[UUID] = Field(default_factory=list, max_length=20)
+
+    @field_validator('extra_values')
+    @classmethod
+    def valid_values(cls, value):
+        if any(len(v)>2000 for v in value):
+            raise ValueError('每个字段最多2000字符')
+        return value
 
     @field_validator('target_ids')
     @classmethod
@@ -36,6 +44,8 @@ class MemoItem(Input):
 class CardContent(Input):
     kind: Literal['knowledge', 'opinion', 'reference', 'memo']
     memo_format: Literal['note', 'checklist'] | None = None
+    memo_columns: list[str] = Field(default_factory=lambda: ['条目', '字段 2', '字段 3'], min_length=3, max_length=3)
+    memo_column_count: int = Field(default=1, ge=1, le=3)
     memo_items: list[MemoItem] = Field(default_factory=list, max_length=200)
     form: Literal['qa', 'cloze'] | None = None
     title: str = Field(min_length=1, max_length=200)
@@ -56,6 +66,13 @@ class CardContent(Input):
     taxonomy_mode: Literal['unified'] | None = None
     processing_state: Literal['inbox', 'organized'] = 'inbox'
     is_bookmarked: bool = False
+
+    @field_validator('memo_columns')
+    @classmethod
+    def valid_columns(cls, value):
+        if any(not v.strip() or len(v.strip())>40 for v in value):
+            raise ValueError('列名需要1–40字符')
+        return [v.strip() for v in value]
 
     @field_validator('question_md', 'answer_md', 'body_md', 'note_md')
     @classmethod
@@ -123,6 +140,8 @@ class CardPatch(Input):
     expected_revision: int = Field(ge=1)
     taxonomy_mode: Literal['unified'] | None = None
     memo_items: list[MemoItem] | None = Field(default=None, max_length=200)
+    memo_columns: list[str] | None = None
+    memo_column_count: int | None = None
     title: str | None = Field(default=None, min_length=1, max_length=200)
     question_md: str | None = None
     answer_md: str | None = None

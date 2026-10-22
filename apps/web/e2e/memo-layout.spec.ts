@@ -50,17 +50,15 @@ for (const width of [320, 390, 600, 601, 1280]) {
     const first = page.locator('.memo-edit-items > li').first()
     await expect(page.getByLabel('条目 2', { exact: true })).toHaveValue(text)
     const groups = await first.locator('.memo-item-actions').evaluate(element => {
-      const label = element.querySelector('label')!.getBoundingClientRect()
       const order = element.querySelector('.memo-item-order')!.getBoundingClientRect()
       const tools = element.querySelector('.memo-item-tools')!.getBoundingClientRect()
       const buttons = [...element.querySelectorAll('button')].map(b => { const r = b.getBoundingClientRect(); return { top: r.top, height: r.height, width: r.width, right: r.right } })
-      return { labelCenter: label.top + label.height / 2, orderCenter: order.top + order.height / 2, orderBottom: order.bottom, toolsTop: tools.top, buttons }
+      return { orderBottom: order.bottom, toolsTop: tools.top, buttons }
     })
-    expect(Math.abs(groups.labelCenter - groups.orderCenter)).toBeLessThanOrEqual(1)
     expect(groups.buttons.every(b => b.height >= 44)).toBe(true)
     expect(Math.abs(groups.buttons[0].top - groups.buttons[1].top)).toBeLessThanOrEqual(1)
     expect(Math.abs(groups.buttons[2].top - groups.buttons[3].top)).toBeLessThanOrEqual(1)
-    if (width <= 600) {
+    if (width <= 736) {
       expect(groups.toolsTop).toBeGreaterThanOrEqual(groups.orderBottom + 7)
       expect(Math.abs(groups.buttons[2].width - groups.buttons[3].width)).toBeLessThanOrEqual(1)
     } else expect(Math.abs(groups.buttons[0].top - groups.buttons[2].top)).toBeLessThanOrEqual(1)
@@ -72,11 +70,12 @@ for (const width of [320, 390, 600, 601, 1280]) {
     await page.getByRole('button', { name: '上移条目 2', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByLabel('条目 1', { exact: true })).toHaveValue(text)
-    await page.getByRole('button', { name: '关联卡片', exact: true }).first().click()
+    await page.getByRole('button', { name: '关联知识', exact: true }).first().click()
     await expect(page.getByLabel('搜索要关联的卡片')).toBeVisible()
-    await page.getByRole('button', { name: '关联卡片', exact: true }).first().click()
+    await page.getByRole('button', { name: '关联知识', exact: true }).first().click()
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     const save = page.getByRole('button', { name: '保存备忘', exact: true })
+    await save.scrollIntoViewIfNeeded()
     await expect(save).toBeInViewport()
     if (width < 600) {
       const saveBox = await save.boundingBox(), navBox = await page.getByRole('navigation', { name: '移动端导航' }).boundingBox()

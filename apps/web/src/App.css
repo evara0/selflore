@@ -451,3 +451,39 @@
 .memo-workspace .toolbar{flex-wrap:wrap}.memo-workspace .toolbar input{min-width:0;flex:1}
 .filter-tabs,.segmented{flex-wrap:wrap}.heading-action{flex-wrap:wrap}
 @media(max-width:600px){.memo-item-actions{grid-template-columns:minmax(0,1fr) auto;gap:12px 8px}.memo-item-tools{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.memo-item-tools button{width:100%;padding:8px;white-space:normal}.memo-editor{padding:16px}.memo-workspace .card-grid{grid-template-columns:minmax(0,1fr)}.memo-items>li{padding:12px}.memo-workspace .toolbar input{width:100%;flex-basis:100%}}
+/* Shared editor structure and checklist fields; values stay in their fixed slots. */
+.editor.memo-editor{max-width:none;margin:0;padding:0;gap:0}
+.editor .segmented{width:100%;align-items:center}
+.editor .segmented a,.editor .segmented>span{padding:8px 10px;font-size:12px}
+.editor .segmented>span.selected{color:var(--accent);box-shadow:inset 0 0 0 1px currentColor}
+.checklist-column-names{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.checklist-columns{margin-top:20px}
+.checklist-row-fields{display:grid;grid-template-columns:80px repeat(var(--memo-columns),minmax(0,1fr));gap:12px;align-items:start}
+.checklist-row-fields .checklist-completion{display:flex;flex-direction:row;align-items:center;gap:6px;padding-top:28px;white-space:nowrap}
+.checklist-completion input{width:22px;height:22px;accent-color:var(--accent)}
+.tabular-edit .memo-item-actions{display:flex;flex-wrap:wrap;justify-content:space-between}
+.tabular-edit .memo-item-tools{display:flex;flex-wrap:wrap;gap:8px}
+.tabular-edit .memo-item-tools button{white-space:normal}
+.knowledge-save-status{border-left:3px solid var(--accent);padding:12px;background:var(--paper)}
+.memo-extra-fields{margin:8px 0;display:grid;gap:12px;overflow-wrap:anywhere}
+.memo-extra-fields dt,.mobile-field-name{font-size:12px;color:var(--muted)}
+.memo-extra-fields dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.checklist-table-heading{display:grid;grid-template-columns:22px repeat(var(--memo-columns),minmax(0,1fr));gap:12px;font-size:13px;color:var(--muted)}
+.checklist-read-fields{display:grid;grid-template-columns:22px repeat(var(--memo-columns),minmax(0,1fr));gap:12px}
+.checklist-read-fields .checklist-read-main{display:contents}
+.checklist-read-main>span{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.checklist-read-fields .memo-extra-fields{display:contents;margin:0}
+.tabular-read .memo-extra-fields dt,.mobile-field-name{display:none}
+@media(max-width:1000px){.editor.memo-editor{grid-template-columns:minmax(0,1fr)}.memo-editor .editor-side{border-left:0;border-top:1px solid var(--border)}}
+@media(max-width:736px){
+ .checklist-column-names,.checklist-row-fields{grid-template-columns:minmax(0,1fr)}
+ .checklist-row-fields .checklist-completion{padding:0}
+ .tabular-edit .memo-item-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .tabular-edit .memo-item-tools button:last-child{grid-column:1/-1}
+ .checklist-read-fields{display:block}
+ .checklist-read-fields .checklist-read-main{display:flex}
+ .checklist-read-fields .memo-extra-fields{display:grid;grid-template-columns:minmax(0,1fr);padding-left:34px;margin-top:12px}
+ .tabular-read .memo-extra-fields dt,.mobile-field-name{display:block}
+ .memo-items>.checklist-table-heading{display:none}
+ .inline-knowledge .page-heading h1{font-size:25px}
+}

@@ -32,7 +32,7 @@ def test_upgrade_preserves_existing_cards_links_and_review_state(tmp_path,monkey
         before=db.execute('SELECT id,owner_id,code,kind,question_md,answer_md,body_md,revision FROM app.cards ORDER BY id').fetchall()
         review=db.execute('SELECT * FROM app.review_states').fetchall()
         links=db.execute('SELECT * FROM app.card_links').fetchall()
-    assert migrate('prod','127.0.0.1',6179)==['0005_reference_media','0006_memo_cards','0007_unified_card_tags']
+    assert migrate('prod','127.0.0.1',6179)==['0005_reference_media','0006_memo_cards','0007_unified_card_tags','0008_tabular_checklists']
     with psycopg.connect(DSN) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert before==db.execute('SELECT id,owner_id,code,kind,question_md,answer_md,body_md,revision FROM app.cards ORDER BY id').fetchall()

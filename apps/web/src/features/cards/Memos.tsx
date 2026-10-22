@@ -14,9 +14,15 @@ import {
   type Page,
 } from '../../lib/workspace'
 import { PageHeading, Pager, QueryState, Tags } from '../../components/Common'
-import { TargetLinks } from '../../components/MemoContent'
+import { MemoExtraFields, TargetLinks } from '../../components/MemoContent'
 
-type OpenItem = MemoItem & { memo_card_id: string; memo_title: string; revision: number }
+type OpenItem = MemoItem & {
+  memo_card_id: string
+  memo_title: string
+  revision: number
+  memo_columns?: string[]
+  memo_column_count?: number
+}
 export default function Memos() {
   const location = useLocation()
   const [search, setSearch] = useSearchParams(),
@@ -140,6 +146,11 @@ export default function Memos() {
                     />
                     <span>{item.text}</span>
                   </label>
+                  <MemoExtraFields
+                    item={item}
+                    columns={item.memo_columns}
+                    count={item.memo_column_count}
+                  />
                   <Link
                     to={`/memos/${item.memo_card_id}?item=${item.id}`}
                     state={{ from: location.pathname + location.search }}

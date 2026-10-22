@@ -75,13 +75,13 @@ def test_upgrade_dedup_provenance_retries_backup_restore(tmp_path,monkeypatch):
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert not ready(db)
     migration_started=time.perf_counter()
-    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags']
+    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists']
     migration_seconds=time.perf_counter()-migration_started
     assert migrate('prod','127.0.0.1',6179)==[]
     with psycopg.connect(DSN,row_factory=dict_row) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert ready(db)
-        assert before==db.execute('SELECT * FROM app.cards ORDER BY id').fetchall()
+        assert before==[{k:v for k,v in row.items() if k not in ('memo_columns','memo_column_count')} for row in db.execute('SELECT * FROM app.cards ORDER BY id').fetchall()]
         assert db.execute('SELECT count(*) AS n FROM app.card_tags WHERE card_id=%s',(card,)).fetchone()['n']==29
         assert db.execute('SELECT count(*) AS n FROM app.card_tags WHERE card_id=%s',(maximum,)).fetchone()['n']==30
         aliases=db.execute("SELECT canonical_tag_id FROM app.tag_aliases WHERE owner_id=%s AND original_name IN ('AI','ＡＩ')",(owner,)).fetchall()
@@ -142,4 +142,4 @@ def test_invalid_normalization_and_grant_failure_rollback(tmp_path,monkeypatch):
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert db.execute("SELECT to_regclass('app.tag_aliases')").fetchone()==(None,)
         assert db.execute("SELECT count(*) FROM app.schema_migrations WHERE version='0007_unified_card_tags'").fetchone()==(0,)
-    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags']
+    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists']
