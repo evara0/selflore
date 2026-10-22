@@ -19,9 +19,10 @@ SELECT = """SELECT c.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
       FROM app.card_tags ct JOIN app.tags t ON t.owner_id=ct.owner_id AND t.id=ct.tag_id
       WHERE ct.owner_id=c.owner_id AND ct.card_id=c.id),'[]'::jsonb) AS tags,
-    COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'name',t.name) ORDER BY t.name)
-      FROM app.card_topics ct JOIN app.topics t ON t.owner_id=ct.owner_id AND t.id=ct.topic_id
-      WHERE ct.owner_id=c.owner_id AND ct.card_id=c.id),'[]'::jsonb) AS topics,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('id',a.old_id,'name',t.name,'kind',a.kind) ORDER BY t.name)
+      FROM app.card_tag_sources ct JOIN app.tag_aliases a ON a.owner_id=ct.owner_id AND a.old_id=ct.source_id AND a.source_type='topic'
+      JOIN app.tags t ON t.owner_id=a.owner_id AND t.id=a.canonical_tag_id
+      WHERE ct.owner_id=c.owner_id AND ct.card_id=c.id AND ct.source_type='legacy_topic'),'[]'::jsonb) AS topics,
     (SELECT count(DISTINCT target_card_id) FROM app.all_card_links l WHERE l.owner_id=c.owner_id AND l.source_card_id=c.id) AS link_count,
     (SELECT count(DISTINCT source_card_id) FROM app.all_card_links l WHERE l.owner_id=c.owner_id AND l.target_card_id=c.id) AS backlink_count
     FROM app.cards c"""
@@ -47,6 +48,7 @@ def public(row, *, summary=False):
         result.pop(key, None)
     result['topic_ids'] = [t['id'] for t in result.get('topics',[])]
     result['tag_ids'] = [t['id'] for t in result.get('tags',[])]
+    result['taxonomy_mode'] = 'unified'
     text = result.get('body_md') or result.get('note_md') or result.get('question_md') or ''
     if result['kind']=='knowledge' and result['form']=='cloze':
         from app.services.content import cloze_text
@@ -79,7 +81,7 @@ def attachment_links(db, owner, card_id):
         WHERE ca.owner_id=%s AND ca.card_id=%s ORDER BY ca.position''', (owner,card_id))
 
 
-def list_cards(db, owner, *, kind=None, kinds=None, memo_format=None, q=None, topic_id=None, tag_id=None, lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
+def list_cards(db, owner, *, kind=None, kinds=None, memo_format=None, q=None, topic_id=None, tag_id=None, tag_ids=None, tag_match='all', lifecycle='active', processing_state=None, is_bookmarked=None, sort='updated_desc', limit=24, offset=0):
     conditions, values = ['c.owner_id=%s','c.lifecycle=%s'], [owner,lifecycle]
     if kinds:
         conditions.append('c.kind=ANY(%s::text[])'); values.append(kinds)
@@ -89,10 +91,9 @@ def list_cards(db, owner, *, kind=None, kinds=None, memo_format=None, q=None, to
     if q:
         conditions.append("c.search_text ILIKE %s ESCAPE '\\'")
         values.append('%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%')
-    for table,field,value in (('card_topics','topic_id',topic_id),('card_tags','tag_id',tag_id)):
-        if value is not None:
-            conditions.append(f'EXISTS(SELECT 1 FROM app.{table} r WHERE r.owner_id=c.owner_id AND r.card_id=c.id AND r.{field}=%s)')
-            values.append(value)
+    from app.services import tags
+    tag_where,tag_values=tags.predicate(db,owner,tag_ids,tag_match,topic_id,tag_id)
+    if tag_where: conditions.append(tag_where[5:]); values.extend(tag_values)
     where = ' WHERE '+' AND '.join(conditions)
     orders = {'updated_desc':'c.updated_at DESC,c.id DESC','created_desc':'c.created_at DESC,c.id DESC','code_asc':'c.code,c.id',
               'connections_desc':'link_count+backlink_count DESC,c.updated_at DESC,c.id DESC'}
@@ -113,7 +114,7 @@ def list_cards(db, owner, *, kind=None, kinds=None, memo_format=None, q=None, to
     return {'items':items,'total':total,'limit':limit,'offset':offset}
 
 
-def relations(db, owner, card_id, data):
+def relations(db, owner, card_id, data, changed=None):
     if len(data.attachments)>10:
         fail(422,'too_many_images','每卡最多10张图片')
     ids = [item.id for item in data.attachments]
@@ -123,20 +124,8 @@ def relations(db, owner, card_id, data):
     for position,item in enumerate(data.attachments):
         run(db,'''INSERT INTO app.card_attachments(owner_id,card_id,attachment_id,position,caption,alt_text,creator_name)
                 VALUES(%s,%s,%s,%s,%s,%s,%s)''',(owner,card_id,item.id,position,item.caption,item.alt_text,item.creator_name))
-    for ids,table in ((data.topic_ids,'topics'),(data.tag_ids,'tags')):
-        if ids:
-            extra=' AND kind=%s' if table=='topics' else ''
-            values=(owner,ids,data.kind) if table=='topics' else (owner,ids)
-            found=many(db,f'SELECT id FROM app.{table} WHERE owner_id=%s AND id=ANY(%s::uuid[])'+extra,values)
-            if len(found)!=len(ids):
-                fail(404,'not_found','分类或标签不存在或不可用')
-    for table,key,ids in (('card_topics','topic_id',data.topic_ids),('card_tags','tag_id',data.tag_ids)):
-        run(db,f'DELETE FROM app.{table} WHERE owner_id=%s AND card_id=%s',(owner,card_id))
-        for entity_id in ids:
-            if table=='card_topics':
-                run(db,'INSERT INTO app.card_topics(owner_id,card_id,topic_id,card_kind) VALUES(%s,%s,%s,%s)',(owner,card_id,entity_id,data.kind))
-            else:
-                run(db,'INSERT INTO app.card_tags(owner_id,card_id,tag_id) VALUES(%s,%s,%s)',(owner,card_id,entity_id))
+    from app.services import tags
+    tags.sync(db,owner,card_id,data,changed)
     try:
         targets=references('\n'.join(value or '' for value in (data.body_md,data.note_md,data.question_md,data.answer_md)))
     except ValueError as error:
@@ -173,8 +162,16 @@ def sync_units(db,owner,card_id,data):
 
 
 def create_card(db,owner,data):
+    if data.taxonomy_mode=='unified' and 'topic_ids' in data.model_fields_set:
+        fail(422,'mixed_taxonomy','统一模式不能提交旧分类字段')
     values=data.model_dump(); fingerprint=digest(data.model_dump(mode='json'))
     compatible={fingerprint}
+    if data.taxonomy_mode is None:
+        legacy_payload=data.model_dump(mode='json',exclude={'taxonomy_mode'})
+        compatible.add(digest(legacy_payload))
+        for excluded in (('memo_format','memo_items'),('memo_format','memo_items','note_md','attachments','source_author','source_publisher','source_platform','source_published_on')):
+            if all(legacy_payload.get(k) in (None,'',[]) for k in excluded):
+                compatible.add(digest({k:v for k,v in legacy_payload.items() if k not in excluded}))
     if data.kind != 'memo' and values['memo_format'] is None and not values['memo_items']:
         previous={k:v for k,v in data.model_dump(mode='json').items() if k not in ('memo_format','memo_items')}
         compatible.add(digest(previous))
@@ -208,12 +205,19 @@ def create_card(db,owner,data):
 
 
 def edit_card(db,owner,card_id,patch):
+    if patch.taxonomy_mode=='unified' and 'topic_ids' in patch.model_fields_set:
+        fail(422,'mixed_taxonomy','统一模式不能提交旧分类字段')
     with db.transaction():
         row=owned(db,'cards',owner,card_id,lock=True); revision(row,patch.expected_revision)
         before=detail(db,owner,card_id)
         from app.services import memos
         if row['kind']=='memo' and row['lifecycle']!='active': fail(409,'memo_unavailable','请先恢复备忘再编辑')
         payload={key:before[key] for key in CardContent.model_fields if key in before}
+        # Response contains the canonical union; legacy writes must validate their
+        # own submitted partition, never reinterpret the union as old topics.
+        payload['taxonomy_mode']=patch.taxonomy_mode
+        payload['topic_ids']=[]
+        if patch.taxonomy_mode is None: payload['tag_ids']=[]
         payload['attachments']=[{key:item.get(key) for key in ('id','caption','alt_text','creator_name')} for item in before['attachments']]
         payload['memo_items']=memos.inputs(before['memo_items'])
         original=CardContent.model_validate(payload).model_dump(mode='json')
@@ -221,14 +225,14 @@ def edit_card(db,owner,card_id,patch):
         try:
             data=CardContent.model_validate(payload)
         except (ValidationError,ValueError):
-            fail(422,'invalid_content','请检查问题、答案、正文和分类标签')
+            fail(422,'invalid_content','请检查问题、答案、正文和标签')
         values=data.model_dump()
-        if original==data.model_dump(mode='json'):
+        if original==data.model_dump(mode='json') and not ({'tag_ids','topic_ids'} & patch.model_fields_set):
             return before
         run(db,'UPDATE app.cards SET '+','.join(key+'=%s' for key in FIELDS)+',search_text=%s,revision=revision+1,updated_at=now() WHERE owner_id=%s AND id=%s',
             (*(values[key] for key in FIELDS),search_text(values,row['code']),owner,card_id))
         memos.sync(db,owner,card_id,data)
-        relations(db,owner,card_id,data); sync_units(db,owner,card_id,data)
+        relations(db,owner,card_id,data,patch.model_fields_set); sync_units(db,owner,card_id,data)
         content_changed=any(before.get(k)!=values.get(k) for k in ('body_md','note_md','question_md','answer_md')) or original['attachments']!=data.model_dump(mode='json')['attachments']
         if row['kind']=='memo':
             content_changed=content_changed or original['memo_items']!=data.model_dump(mode='json')['memo_items']

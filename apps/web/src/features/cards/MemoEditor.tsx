@@ -49,6 +49,7 @@ export default function MemoEditor({ original }: { original?: Card }) {
     const content = {
       title,
       body_md: body || null,
+      taxonomy_mode: 'unified',
       tag_ids: tags,
       source_url: source || null,
       source_title: sourceTitle || null,

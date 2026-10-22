@@ -21,7 +21,7 @@ PASSWORD_FILE = PROJECT_DIR / '.cache' / 'local' / 'pgpass.conf'
 HOST, PORT, DATABASE, ROLE = '127.0.0.1', '6171', 'selflore_dev', 'selflore_dev_app'
 WEB_PORT = 24566
 TABLES = ('users', 'auth_sessions', 'auth_login_throttle', 'account_audit',
-          'user_profiles', 'cards', 'topics', 'card_topics', 'tags', 'card_tags',
+          'user_profiles', 'cards', 'tag_aliases', 'card_tag_sources', 'topics', 'card_topics', 'tags', 'card_tags',
           'card_links', 'collections', 'collection_items', 'activity_events',
           'review_units', 'review_states', 'review_logs', 'attachments', 'card_attachments')
 
@@ -114,6 +114,7 @@ def check_database(options: dict[str, str]) -> None:
             target = cursor.fetchone()
             if target is None or target[:2] != (DATABASE, ROLE) or target[2] // 10000 != 18:
                 raise LocalConfigurationError('数据库实际身份或版本不符；本地入口要求开发库app角色和PostgreSQL 18。')
+            cursor.execute('SELECT normalized_name FROM app.tags LIMIT 0')
             for table in TABLES:
                 # account_audit intentionally grants INSERT only; inspect its existence without reading rows.
                 if table == 'account_audit':

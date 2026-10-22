@@ -96,9 +96,7 @@ export default function SourceCapture({
           {state.busy ? '获取中…' : '获取来源信息'}
         </button>
       </div>
-      <p className="muted">
-        点击获取将读取该公开链接；只补全空白字段，不更改分类、标签或图片作者。
-      </p>
+      <p className="muted">点击获取将读取该公开链接；只补全空白字段，不更改标签或图片作者。</p>
       <p role="status">{state.message}</p>
     </section>
   )

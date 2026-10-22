@@ -392,30 +392,63 @@ export function Trash() {
   )
 }
 function TaxonomySettings() {
-  const [type, setType] = useState('topics'),
-    [message, setMessage] = useState(''),
-    api = useApi(),
+  const [message, setMessage] = useState(''),
+    [name, setName] = useState(''),
+    [pending, setPending] = useState(false)
+  const api = useApi(),
     refresh = useRefresh(),
-    query = useData<{ items: Label[] }>(`/${type}`)
-  async function edit(label: Label, remove = false) {
-    const name = remove ? null : window.prompt('新名称', label.name)
-    if (!remove && !name) return
+    query = useData<{ items: Label[] }>('/tags')
+  async function create() {
+    if (!name.trim() || pending) return
+    setPending(true)
+    setMessage('')
     try {
-      await api(`/${type}/${label.id}`, remove ? 'DELETE' : 'PATCH', remove ? undefined : { name })
+      await api('/tags', 'POST', { name })
+      setName('')
+      await refresh()
+    } catch (error) {
+      setMessage((error as Error).message)
+    } finally {
+      setPending(false)
+    }
+  }
+  async function edit(label: Label, remove = false) {
+    const nextName = remove ? null : window.prompt('新名称', label.name)
+    if (!remove && !nextName) return
+    setMessage('')
+    try {
+      await api(
+        `/tags/${label.id}`,
+        remove ? 'DELETE' : 'PATCH',
+        remove ? undefined : { name: nextName },
+      )
       await refresh()
     } catch (e) {
       setMessage((e as Error).message)
     }
   }
   return (
-    <section className="panel single-form">
-      <h2>分类与标签管理</h2>
-      <div className="segmented">
-        <button onClick={() => setType('topics')} className={type === 'topics' ? 'selected' : ''}>
-          分类 / 主题
-        </button>
-        <button onClick={() => setType('tags')} className={type === 'tags' ? 'selected' : ''}>
-          标签
+    <section className="panel single-form tag-management">
+      <h2>标签管理</h2>
+      <p className="muted">
+        资料、事实知识、观点与备忘共用。使用数为正常卡片数，包含备忘；归档或回收站中的关联也会阻止删除。
+      </p>
+      <div className="inline-form">
+        <input
+          aria-label="新标签名称"
+          placeholder="标签名称"
+          value={name}
+          maxLength={160}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void create()
+            }
+          }}
+        />
+        <button type="button" disabled={pending || !name.trim()} onClick={() => void create()}>
+          {pending ? '创建中…' : '新建标签'}
         </button>
       </div>
       <p role="status">{message}</p>
@@ -423,16 +456,8 @@ function TaxonomySettings() {
         {query.data?.items.map((t) => (
           <div className="directory-row" key={t.id}>
             <div>
-              {t.name}{' '}
-              <small>
-                {t.kind === 'knowledge'
-                  ? '知识分类'
-                  : t.kind === 'opinion'
-                    ? '观点主题'
-                    : t.kind === 'reference'
-                      ? '资料分类'
-                      : ''}
-              </small>
+              {t.name}
+              <small> · {t.card_count ?? 0} 张卡片</small>
             </div>
             <button onClick={() => void edit(t)}>重命名</button>
             <button onClick={() => void edit(t, true)}>删除</button>

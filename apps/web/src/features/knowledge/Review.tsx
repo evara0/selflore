@@ -1,6 +1,8 @@
+import { TagFilter } from '../../components/Selectors'
+import { tagQuery } from '../../lib/tag-filter'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useApi, useData, useRefresh, params, type Unit, type Label } from '../../lib/workspace'
+import { useApi, useData, useRefresh, type Unit } from '../../lib/workspace'
 import { CardImprint, Markdown, PageHeading, QueryState } from '../../components/Common'
 
 import { cardInk } from '../../lib/theme'
@@ -16,9 +18,8 @@ function interval(seconds?: number) {
       : `${Math.round(seconds / 86400)} 天`
 }
 export default function Review() {
-  const [search, setSearch] = useSearchParams(),
-    queue = useData<Queue>(`/reviews/queue?${params({ topic_id: search.get('topic') })}`),
-    topics = useData<{ items: Label[] }>('/topics?kind=knowledge')
+  const [search] = useSearchParams(),
+    queue = useData<Queue>(`/reviews/queue?${tagQuery(search)}`)
   const api = useApi(),
     refresh = useRefresh(),
     unit = queue.data?.items[0]
@@ -85,18 +86,7 @@ export default function Review() {
       </PageHeading>
       <div className="study-toolbar">
         <span>本轮已完成 {completed} 个复习单元</span>
-        <select
-          aria-label="复习分类"
-          value={search.get('topic') || ''}
-          onChange={(e) => setSearch(e.target.value ? { topic: e.target.value } : {})}
-        >
-          <option value="">全部分类</option>
-          {topics.data?.items.map((t) => (
-            <option value={t.id} key={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+        <TagFilter />
       </div>
       <QueryState query={queue}>
         {unit ? (

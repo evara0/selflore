@@ -121,9 +121,11 @@ export type Unit = {
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  existingTag?: Label
+  constructor(message: string, status: number, existingTag?: Label) {
     super(message)
     this.status = status
+    this.existingTag = existingTag
   }
 }
 export async function request<T>(
@@ -153,7 +155,11 @@ export async function request<T>(
         : detail
     if (response.status === 401 && !path.startsWith('/auth/'))
       window.dispatchEvent(new Event('session-expired'))
-    throw new ApiError(message || `请求失败 (${response.status})`, response.status)
+    throw new ApiError(
+      message || `请求失败 (${response.status})`,
+      response.status,
+      detail?.existing_tag,
+    )
   }
   return response.status === 204 ? (undefined as T) : response.json()
 }

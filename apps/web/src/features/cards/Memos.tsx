@@ -1,3 +1,5 @@
+import { TagFilter } from '../../components/Selectors'
+import { tagQuery } from '../../lib/tag-filter'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
@@ -35,9 +37,9 @@ export default function Memos() {
     limit: 12,
     offset,
   })
-  const cards = useData<Page<Card>>(`/cards?${memoParams}`, !open)
+  const cards = useData<Page<Card>>(`/cards?${memoParams}&${tagQuery(search)}`, !open)
   const tasks = useData<Page<OpenItem>>(
-    `/memo-items?${params({ is_completed: false, q, limit: 12, offset })}`,
+    `/memo-items?${params({ is_completed: false, q, limit: 12, offset })}&${tagQuery(search)}`,
     open,
   )
   const data = open ? tasks.data : cards.data
@@ -119,6 +121,7 @@ export default function Memos() {
             </select>
           )}
         </div>
+        <TagFilter />
         <p className="muted">
           {data?.total ?? '—'} {open ? '项未完成事项' : '张备忘卡'}
         </p>

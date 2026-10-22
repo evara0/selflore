@@ -83,9 +83,12 @@ def reorder(db, owner, card_id, body):
     return detail(db,owner,card_id)
 
 
-def listing(db, owner, *, is_completed=False, q=None, limit=24, offset=0):
+def listing(db, owner, *, is_completed=False, q=None, limit=24, offset=0, tag_ids=None, tag_match='all'):
     where=' WHERE i.owner_id=%s AND c.lifecycle=\'active\' AND i.is_completed=%s'
     args=[owner,is_completed]
+    from app.services import tags
+    tag_where,tag_values=tags.predicate(db,owner,tag_ids,tag_match)
+    where+=tag_where; args.extend(tag_values)
     if q:
         pattern='%'+q.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
         where+=" AND (c.title ILIKE %s ESCAPE '\\' OR i.text ILIKE %s ESCAPE '\\')"

@@ -1,0 +1,97 @@
+--- a/deploy/protocol.py
++++ b/deploy/protocol.py
+@@ -122,7 +122,7 @@
+         raise ReleaseError('invalid_source_mode')
+     if manifest['mode'] == 'commit' and not COMMIT_RE.fullmatch(manifest.get('commit', '')):
+         raise ReleaseError('invalid_commit')
+-    if not isinstance(manifest.get('features'), dict) or set(manifest['features']) not in ({'media'}, {'media','memo'}) or any(not isinstance(value,bool) for value in manifest['features'].values()):
++    if not isinstance(manifest.get('features'), dict) or set(manifest['features']) not in ({'media'}, {'media','memo'}, {'media','memo','unified_tags'}) or any(not isinstance(value,bool) for value in manifest['features'].values()):
+         raise ReleaseError('invalid_features')
+     files = manifest.get('files')
+     if not isinstance(files, dict) or not files:
+@@ -143,6 +143,8 @@
+     actual = {PurePosixPath(p).stem: i['sha256'] for p, i in files.items() if p.startswith('apps/api/migrations/')}
+     if manifest['features'].get('memo',False) != ('0006_memo_cards' in migrations):
+         raise ReleaseError('memo_capability_mismatch')
++    if manifest['features'].get('unified_tags',False) != ('0007_unified_card_tags' in migrations):
++        raise ReleaseError('unified_tags_capability_mismatch')
+     if actual != migrations:
+         raise ReleaseError('migration_inventory_mismatch')
+     tools = manifest.get('tools', {})
+--- a/deploy/client.py
++++ b/deploy/client.py
+@@ -282,7 +282,7 @@
+         files = {p.relative_to(self.package).as_posix(): {'sha256': file_hash(p), 'size': p.stat().st_size} for p in self.package.rglob('*') if p.is_file()}
+         migrations = {Path(p).stem: i['sha256'] for p, i in files.items() if p.startswith('apps/api/migrations/')}
+         manifest = {'format': VERSION, 'tool_version': VERSION, **identity, 'mode': self.report['mode'], 'files': files,
+-                    'migrations': migrations, 'tools': tools, 'features': {'media': 'apps/api/app/media_storage.py' in files, 'memo': '0006_memo_cards' in migrations},
++                    'migrations': migrations, 'tools': tools, 'features': {'media': 'apps/api/app/media_storage.py' in files, 'memo': '0006_memo_cards' in migrations, 'unified_tags': '0007_unified_card_tags' in migrations},
+                     'inputs_sha256': digest(canonical(inventory)), 'check_policy': list(CHECKS)}
+         validate_manifest(manifest)
+         atomic_json(self.package / 'release-manifest.json', manifest, 0o644)
+--- a/deploy/runtime.py
++++ b/deploy/runtime.py
+@@ -20,6 +20,9 @@
+         if connection.execute('SELECT current_database(), current_user').fetchone() != ('selflore_prod', 'selflore_prod_app'):
+             return False
+         connection.execute('SELECT 1 FROM app.users LIMIT 0')
++        if MANIFEST['features'].get('unified_tags'):
++            from app.schema_capability import ready
++            if not ready(connection): return False
+     if MANIFEST['features']['media']:
+         from app.media_storage import MediaConfig
+         config = MediaConfig.load()
+--- a/deploy/tests/test_executor.py
++++ b/deploy/tests/test_executor.py
+@@ -30,7 +30,7 @@
+     return Path(tempfile.mkdtemp(dir=CACHE))
+ 
+ 
+-def payload(root, release_id='20261012000000-00000001', commit='a' * 40, sql=b'SELECT 1;\n', api=b'# same application\n', media=False, memo=False):
++def payload(root, release_id='20261012000000-00000001', commit='a' * 40, sql=b'SELECT 1;\n', api=b'# same application\n', media=False, memo=False, unified_tags=False):
+     directory = root / ('payload-' + release_id)
+     directory.mkdir()
+     files = {
+@@ -43,13 +43,14 @@
+         'apps/web/dist/release-version.json': p.canonical({'release_id': release_id, 'commit': commit}),
+     }
+     if memo: files['apps/api/migrations/0006_memo_cards.sql'] = b'-- synthetic memo migration\n'
++    if unified_tags: files['apps/api/migrations/0007_unified_card_tags.sql'] = b'-- synthetic tag migration\n'
+     files.update({'.executor/' + name: (EXECUTOR_DIR / name).read_bytes() for name in p.TOOL_FILES})
+     for name, content in files.items():
+         target = p.safe_join(directory, name); target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(content)
+     tools = {name: p.file_hash(EXECUTOR_DIR / name) for name in p.TOOL_FILES}
+     manifest = {'format': 2, 'tool_version': 2, 'release_id': release_id, 'commit': commit, 'mode': 'commit',
+                 'files': {name: {'size': len(data), 'sha256': p.digest(data)} for name, data in files.items()},
+-                'migrations': {Path(name).stem: p.digest(data) for name,data in files.items() if name.startswith('apps/api/migrations/')}, 'tools': tools, 'features': {'media': media, 'memo': memo},
++                'migrations': {Path(name).stem: p.digest(data) for name,data in files.items() if name.startswith('apps/api/migrations/')}, 'tools': tools, 'features': {'media': media, 'memo': memo, **({'unified_tags': True} if unified_tags else {})},
+                 'inputs_sha256': p.digest(p.canonical({'input': 'fixture'})), 'check_policy': list(client.CHECKS)}
+     p.atomic_json(directory / 'release-manifest.json', manifest)
+     archive = root / (release_id + '.tar.gz')
+@@ -288,6 +289,26 @@
+         _, _, manifest = payload(self.root, memo=True)
+         manifest['features']['memo'] = False
+         with self.assertRaisesRegex(p.ReleaseError, 'memo_capability'): p.validate_manifest(manifest)
++
++    def test_tag_capability_blocks_old_package_and_allows_matching_package(self):
++        old, old_manifest = self.engine(memo=True)
++        self.migrated(old, old_manifest); old.activate()
++        new, manifest = self.engine('20261012000000-00000002', memo=True, unified_tags=True)
++        self.migrated(new, manifest); self.ops.probe_failed.add(new.id)
++        with patch('remote.time.sleep'), self.assertRaises(p.ReleaseError): new.activate()
++        self.assertEqual(self.ops.pointer, new.id)
++        self.assertEqual(new.state()['rollback']['status'], 'manual_required')
++        self.ops.probe_failed.discard(new.id)
++        compatible, compatible_manifest = self.engine('20261012000000-00000003', memo=True, unified_tags=True)
++        self.migrated(compatible, compatible_manifest); self.ops.probe_failed.add(compatible.id)
++        with patch('remote.time.sleep'), self.assertRaises(p.ReleaseError): compatible.activate()
++        self.assertEqual(self.ops.pointer, new.id)
++        self.assertEqual(compatible.state()['rollback']['status'], 'succeeded')
++
++    def test_tag_capability_requires_exact_migration_inventory(self):
++        _, _, manifest = payload(self.root, memo=True, unified_tags=True)
++        manifest['features']['unified_tags'] = False
++        with self.assertRaisesRegex(p.ReleaseError, 'unified_tags_capability'): p.validate_manifest(manifest)
+ 
+     def test_target_lock_rejects_parallel_stage(self):
+         engine, _ = self.engine(); errors = []

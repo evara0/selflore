@@ -70,7 +70,7 @@ export function CardDetail({ id, compact = false }: { id: string; compact?: bool
             </div>
             <h2>{card.title}</h2>
             <small className="card-code">{card.code}</small>
-            <Tags items={[...card.topics, ...card.tags]} />
+            <Tags items={card.tags} />
             {card.lifecycle !== 'active' && (
               <p className="notice">
                 这张卡片已{card.lifecycle === 'trashed' ? '移入回收站' : '归档'}。

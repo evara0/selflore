@@ -1,3 +1,5 @@
+import { TagFilter } from '../../components/Selectors'
+import { tagQuery } from '../../lib/tag-filter'
 import { PrivateImage } from '../../components/Attachments'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams, useLocation } from 'react-router-dom'
@@ -10,7 +12,6 @@ import {
   cardUrl,
   clozeText,
   type Card,
-  type Label,
   type Page,
   type ReviewSummary,
 } from '../../lib/workspace'
@@ -54,7 +55,7 @@ function Flashcard({ card }: { card: Card }) {
         data-card-ink={cardInk(card.id)}
       >
         <div className="card-meta">
-          <span>资料卡 · {card.topics[0]?.name || '未分类'}</span>
+          <span>资料卡</span>
           <button
             aria-label={`${card.is_bookmarked ? '取消收藏' : '收藏'} ${card.title}`}
             aria-pressed={card.is_bookmarked}
@@ -93,7 +94,7 @@ function Flashcard({ card }: { card: Card }) {
   if (card.kind === 'opinion')
     return (
       <article className="flashcard opinion-card print-card" data-card-id={card.id}>
-        <small>观点 · {card.topics.map((t) => t.name).join('、') || '未分类'}</small>
+        <small>观点</small>
         <Link
           className="card-title"
           to={cardUrl(card)}
@@ -114,9 +115,7 @@ function Flashcard({ card }: { card: Card }) {
       data-card-ink={cardInk(card.id)}
     >
       <div className="card-meta">
-        <span>
-          {card.topics[0]?.name || '未分类'} · {card.form === 'cloze' ? '填空' : '问答'}
-        </span>
+        <span>{card.form === 'cloze' ? '填空' : '问答'}</span>
         <button
           aria-label={`${card.is_bookmarked ? '取消收藏' : '收藏'} ${card.title}`}
           aria-pressed={card.is_bookmarked}
@@ -177,22 +176,18 @@ export default function Cards() {
       setSearch(next, { replace: true })
     }
   }, [account, type, search, setSearch])
-  const topics = useData<{ items: Label[] }>(type !== 'all' ? `/topics?kind=${type}` : '/topics'),
-    tags = useData<{ items: Label[] }>('/tags')
   const cardParams = params({
     kind: type === 'all' ? undefined : type,
     kinds: type === 'all' ? 'knowledge,reference,opinion' : undefined,
     q,
     processing_state: search.get('state'),
-    topic_id: topic,
-    tag_id: search.get('tag'),
     lifecycle,
     is_bookmarked: bookmarked || undefined,
     sort: search.get('sort') || 'updated_desc',
     limit: 12,
     offset,
   })
-  const cards = useData<Page<Card>>(`/cards?${cardParams}`)
+  const cards = useData<Page<Card>>(`/cards?${cardParams}&${tagQuery(search)}`)
   const summary = useData<ReviewSummary>('/reviews/summary'),
     totals = useData<{ knowledge: number; references: number; opinions: number }>('/cards/summary')
   function update(key: string, value: string) {
@@ -246,34 +241,6 @@ export default function Cards() {
             已归档
           </button>
           <div className="sidebar-divider" />
-          <p className="eyebrow">分类</p>
-          <QueryState query={topics}>
-            {topics.data?.items
-              .filter((t) => ['knowledge', 'reference', 'opinion'].includes(t.kind || ''))
-              .map((t) => (
-                <button
-                  className={topic === t.id ? 'active' : ''}
-                  key={t.id}
-                  onClick={() => {
-                    const next = new URLSearchParams(search)
-                    next.set('topic', t.id)
-                    if (t.kind) next.set('type', t.kind)
-                    next.delete('offset')
-                    setSearch(next)
-                  }}
-                >
-                  <span className="category-dot" />
-                  {t.name}
-                  {type === 'all' && t.kind && (
-                    <small>
-                      {' '}
-                      · {t.kind === 'reference' ? '资料' : t.kind === 'opinion' ? '观点' : '知识'}
-                    </small>
-                  )}
-                  <span>{t.card_count}</span>
-                </button>
-              ))}
-          </QueryState>
           <Link className="sidebar-add" to="/new?kind=knowledge">
             ＋ 新建知识卡片
           </Link>
@@ -357,18 +324,6 @@ export default function Cards() {
               />
             </div>
             <select
-              aria-label="知识标签"
-              value={search.get('tag') || ''}
-              onChange={(e) => update('tag', e.target.value)}
-            >
-              <option value="">全部标签</option>
-              {tags.data?.items.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <select
               aria-label="知识排序"
               value={search.get('sort') || 'updated_desc'}
               onChange={(e) => update('sort', e.target.value)}
@@ -385,12 +340,13 @@ export default function Cards() {
               <Icon name="grid" />
             </button>
           </div>
+          <TagFilter />
           <div className="section-title">
             <h2>
               {lifecycle === 'archived'
                 ? '已归档'
                 : topic
-                  ? topics.data?.items.find((t) => t.id === topic)?.name
+                  ? '标签筛选'
                   : bookmarked
                     ? '收藏卡片'
                     : '全部卡片'}{' '}

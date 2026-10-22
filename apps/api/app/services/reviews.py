@@ -27,14 +27,15 @@ def render(row,card):
             'cloze_index':row['cloze_index']}
 
 
-def queue(db,owner,topic_id=None,limit=100):
+def queue(db,owner,topic_id=None,limit=100,*,tag_ids=None,tag_match='all'):
     settings,_,start,end=profiles.day_bounds(db,owner)
     started=one(db,"SELECT count(DISTINCT unit_id) AS n FROM app.review_logs WHERE owner_id=%s AND reviewed_at>=%s AND reviewed_at<%s AND state_before->>'state'='new'",(owner,start,end))['n']
     allowance=max(0,settings['daily_new_limit']-started)
     where="u.owner_id=%s AND u.is_active AND c.lifecycle='active'"
     values=[owner]
-    if topic_id:
-        where+=' AND EXISTS(SELECT 1 FROM app.card_topics t WHERE t.owner_id=c.owner_id AND t.card_id=c.id AND t.topic_id=%s)'; values.append(topic_id)
+    from app.services import tags
+    tag_where,tag_values=tags.predicate(db,owner,tag_ids,tag_match,topic_id)
+    where+=tag_where; values.extend(tag_values)
     base='SELECT u.id FROM app.review_units u JOIN app.review_states s ON s.owner_id=u.owner_id AND s.unit_id=u.id JOIN app.cards c ON c.owner_id=u.owner_id AND c.id=u.card_id WHERE '+where
     due=many(db,base+" AND s.state<>'new' AND s.due_at<=now() ORDER BY s.due_at,u.id LIMIT %s",(*values,limit))
     new=many(db,base+" AND s.state='new' ORDER BY u.created_at,u.id LIMIT %s",(*values,min(allowance,limit-len(due))))

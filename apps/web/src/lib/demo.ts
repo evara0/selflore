@@ -1,6 +1,6 @@
 import type { Card, Collection, Label } from './workspace'
 
-export const DEMO_CACHE_KEY = 'guest-demo-v4'
+export const DEMO_CACHE_KEY = 'guest-demo-v5-tags'
 export const demoId = (n: number) => `de000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const knowledgeTopics: Label[] = [
   { id: demoId(101), name: '学习方法', kind: 'knowledge' },
@@ -189,6 +189,32 @@ cards.push({
     },
   ],
 })
+// Mirror the account-local taxonomy migration while retaining legacy topic aliases.
+for (const topic of [...knowledgeTopics, ...opinionTopics, ...referenceTopics]) {
+  if (!tags.some((t) => t.name.normalize('NFKC').trim() === topic.name.normalize('NFKC').trim()))
+    tags.push({ id: topic.id, name: topic.name })
+}
+for (const card of cards) {
+  card.tags = [
+    ...new Map(
+      [...card.tags, ...card.topics].map((t) => {
+        const canonical = tags.find((i) => i.name === t.name)!
+        return [canonical.id, canonical]
+      }),
+    ).values(),
+  ]
+  card.tag_ids = card.tags.map((t) => t.id)
+}
+function matchesTags(card: Card, query: URLSearchParams) {
+  const ids = [...new Set(query.getAll('tag_ids'))]
+  if (ids.some((id) => !tags.some((t) => t.id === id))) throw new Error('对象不存在或不可用')
+  return (
+    !ids.length ||
+    (query.get('tag_match') === 'any'
+      ? ids.some((id) => card.tag_ids.includes(id))
+      : ids.every((id) => card.tag_ids.includes(id)))
+  )
+}
 const collections: Collection[] = [
   {
     id: demoId(301),
@@ -251,7 +277,7 @@ function read(path: string): unknown {
   if (route === '/memo-items')
     return page(
       cards
-        .filter((c) => c.kind === 'memo' && c.lifecycle === 'active')
+        .filter((c) => c.kind === 'memo' && c.lifecycle === 'active' && matchesTags(c, query))
         .flatMap((c) =>
           (c.memo_items || [])
             .filter(
@@ -266,6 +292,7 @@ function read(path: string): unknown {
   if (route === '/cards') {
     let items = cards.filter(
       (card) =>
+        matchesTags(card, query) &&
         (!query.get('kind') || card.kind === query.get('kind')) &&
         (!query.get('memo_format') || card.memo_format === query.get('memo_format')) &&
         (!query.get('kinds') || query.get('kinds')!.split(',').includes(card.kind)) &&
@@ -305,7 +332,14 @@ function read(path: string): unknown {
             : [...knowledgeTopics, ...opinionTopics, ...referenceTopics]
       ).map((t) => ({ ...t, card_count: cards.filter((c) => c.topic_ids.includes(t.id)).length })),
     }
-  if (route === '/tags') return { items: tags }
+  if (route === '/tags')
+    return {
+      items: tags.map((t) => ({
+        ...t,
+        card_count: cards.filter((c) => c.lifecycle === 'active' && c.tag_ids.includes(t.id))
+          .length,
+      })),
+    }
   const cardMatch = /^\/cards\/([^/]+)(\/links)?$/.exec(route)
   if (cardMatch) {
     const card = cards.find((c) => c.id === cardMatch[1])

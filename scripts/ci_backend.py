@@ -163,7 +163,7 @@ def run(binary: Path) -> int:
             subprocess.run([sys.executable, '-B', '-c', setup], cwd=ROOT / 'apps/api', env=env, check=True, timeout=120)
             print('Running API tests (no skips permitted).', flush=True)
             result = subprocess.run([sys.executable, '-B', '-m', 'pytest', '-q', '-p', 'no:cacheprovider',
-                                     '--basetemp', str(folder / 'pytest'), '--junitxml', str(report)],
+                                     '--basetemp', str(ROOT / '.cache/card-tests' / ('p-' + run_id[:8])), '--junitxml', str(report)],
                                     cwd=ROOT / 'apps/api', env=env, timeout=600)
             state['tests'] = validate_junit(report)
             if result.returncode:

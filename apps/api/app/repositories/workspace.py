@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from psycopg.rows import dict_row
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
 
 
 def one(db, query, values=()):
@@ -22,7 +23,7 @@ def run(db, query, values=()):
 
 
 def fail(status, code, message, **extra):
-    raise HTTPException(status, {'code': code, 'message': message, **extra})
+    raise HTTPException(status, jsonable_encoder({'code': code, 'message': message, **extra}))
 
 
 def owned(db, table, owner, entity, *, lock=False):

@@ -79,3 +79,25 @@ PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，�
 `POST /api/sources/resolve`，请求`{"url":"https://example.com/article","mode":"auto"}`；mode为auto（默认）或webpage（强制普通网页）。要求会话、受信任Origin及CSRF，单账号进程内10次/分钟，并发受限返回429；非法／不安全输入422。
 
 响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../SOURCE_CAPTURE.md)。
+
+
+## 统一标签与兼容协议（0007）
+
+四类内容共用同账号标签，每卡0至30个不同ID；1至80字符名称按NFKC和Unicode首尾空白规范化，同账号规范名唯一，大小写及内部空白不折叠。`POST /tags` 重名返回409，`detail.existing_tag={id,name}` 仅包含本人已有项，可直接选用。重命名碰撞返回409；被正常、归档或回收站卡片引用时删除返回409，不隐式合并或删除内容。
+
+新创建／编辑提交 `taxonomy_mode: "unified"` 与 `tag_ids`；统一模式不提交 `topic_ids`（即使空数组也不提交）。新PATCH仅在tag_ids出现时替换完整集合；缺省标签字段保留。返回 `tags/tag_ids` 是完整规范集合，`taxonomy_mode` 为unified；`topics/topic_ids` 仅为旧主题来源投影。卡片写入继续使用修订、事务及请求幂等规则，升级前已成功创建请求的原载荷重试返回原卡片。
+
+| 查询 | 标签参数及统计 |
+| --- | --- |
+| `/cards` | 重复 `tag_ids=UUID&tag_ids=UUID`，`tag_match=all`（默认）或any；total为卡片数 |
+| `/reviews/queue` | 同上；仅有效知识单元，不改变额度、顺序或评分；items计单元 |
+| `/memo-items` | 同上；按所属清单筛选后分页，total为事项数 |
+| `/tags` | card_count为本人active卡片去重数，跨四类含备忘 |
+
+筛选ID去重后至多30个，空集合不限制标签，未知模式／超限422，不存在与他人ID统一404。all要求全部，any要求至少一个；与关键词、类型、生命周期等取AND。不以JOIN重复计算卡片或单元。
+
+过渡期保留单值topic_id/tag_id及 `/topics` CRUD。旧topic筛选映射规范ID并保留原kind范围，旧tag跨类型；两者同时取AND。旧参数与新tag_ids混用422。topics响应带Deprecation与successor-version Link；本次不删除旧API。
+
+旧卡片请求缺少taxonomy_mode：创建合并topic/tag来源；PATCH只替换显式出现的legacy_topic／legacy_tag分区，保留其他来源及统一写入来源。旧主题仍校验原kind、知识／资料最多一个、备忘不接收主题。旧接口重命名作用于规范标签，所有别名显示同步；删除会使该规范标签全部别名不可用。旧别名ID不复用，不存在与他人对象均404。
+
+页面URL使用重复tag_ids与tag_match并保留q、type、state、bookmarked、card、sort、lifecycle；改变标签清除offset。旧 `/knowledge`、`/opinions` 与Cards的topic/tag、Review的topic仍解析，保留原筛选类型范围；无效旧链接提示不可用，用户可清除筛选，不静默放宽。

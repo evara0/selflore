@@ -4,12 +4,12 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 import unicodedata
 import psycopg
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.auth import get_db,get_settings,current_user,Settings,_origin,_csrf
 from app.repositories.workspace import one,many,run,fail
 from app.schemas.workspace import CardCreate,CardPatch,Lifecycle,Revision,TaxonomyCreate,TaxonomyPatch,CollectionCreate,CollectionPatch,Members,Order,RatingInput,ProfilePatch
-from app.services import cards,collections,reviews,profiles,memos
+from app.services import cards,collections,reviews,profiles,memos,tags as tag_service
 from app.schemas.workspace import MemoCompletion, MemoOrder
 
 router=APIRouter(prefix='/api')
@@ -29,6 +29,7 @@ Offset=Annotated[int,Query(ge=0)]
 
 @router.get('/cards')
 def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo']|None=None,kinds:Annotated[str|None,Query(max_length=80)]=None,q:Annotated[str|None,Query(max_length=200)]=None,memo_format:Literal['note','checklist']|None=None,
+    tag_ids:Annotated[list[UUID]|None,Query()]=None,tag_match:Literal['all','any']='all',
     topic_id:UUID|None=None,tag_id:UUID|None=None,lifecycle:Literal['active','archived','trashed']='active',
     processing_state:Literal['inbox','organized']|None=None,is_bookmarked:bool|None=None,
     sort:Literal['updated_desc','created_desc','code_asc','connections_desc']='updated_desc',limit:Limit=24,offset:Offset=0):
@@ -36,7 +37,7 @@ def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','
     if selected and (kind or len(selected)!=len(set(selected)) or any(k not in ('knowledge','opinion','reference','memo') for k in selected)):
         fail(422,'invalid_kinds','请选择单一类型或有效类型集合')
     if memo_format and kind!='memo': fail(422,'invalid_format','备忘形式需要备忘类型')
-    return cards.list_cards(db,owner,kind=kind,kinds=selected,memo_format=memo_format,q=q,topic_id=topic_id,tag_id=tag_id,lifecycle=lifecycle,
+    return cards.list_cards(db,owner,kind=kind,kinds=selected,memo_format=memo_format,q=q,topic_id=topic_id,tag_id=tag_id,tag_ids=tag_ids,tag_match=tag_match,lifecycle=lifecycle,
         processing_state=processing_state,is_bookmarked=is_bookmarked,sort=sort,limit=limit,offset=offset)
 
 
@@ -53,8 +54,8 @@ def card_summary(db:Db,owner:Owner):
 
 
 @router.get('/memo-items')
-def memo_items(db:Db,owner:Owner,is_completed:bool=False,q:Annotated[str|None,Query(max_length=200)]=None,limit:Limit=24,offset:Offset=0):
-    return memos.listing(db,owner,is_completed=is_completed,q=q,limit=limit,offset=offset)
+def memo_items(db:Db,owner:Owner,tag_ids:Annotated[list[UUID]|None,Query()]=None,tag_match:Literal['all','any']='all',is_completed:bool=False,q:Annotated[str|None,Query(max_length=200)]=None,limit:Limit=24,offset:Offset=0):
+    return memos.listing(db,owner,is_completed=is_completed,q=q,limit=limit,offset=offset,tag_ids=tag_ids,tag_match=tag_match)
 
 
 @router.put('/cards/{entity}/memo-items/order')
@@ -91,71 +92,49 @@ def add_link(entity:UUID,target:UUID,body:Revision,db:Db,owner:Owner): return ca
 def remove_link(entity:UUID,target:UUID,body:Revision,db:Db,owner:Owner): return cards.manual_link(db,owner,entity,target,body.expected_revision,True)
 
 
-def taxonomy_list(db,owner,table,kind=None):
-    relation,key=('card_topics','topic_id') if table=='topics' else ('card_tags','tag_id')
-    query=f"""SELECT t.*,(SELECT count(*) FROM app.{relation} r JOIN app.cards c ON c.owner_id=r.owner_id AND c.id=r.card_id
-      WHERE r.owner_id=t.owner_id AND r.{key}=t.id AND c.lifecycle='active') AS card_count FROM app.{table} t WHERE t.owner_id=%s"""
-    rows=many(db,query+(' AND t.kind=%s' if kind and table=='topics' else '')+' ORDER BY t.name',(owner,kind) if kind and table=='topics' else (owner,))
-    return {'items':[{k:v for k,v in row.items() if k!='owner_id'} for row in rows]}
-
-
-def taxonomy_write(db,owner,table,body,entity=None):
-    name=unicodedata.normalize('NFKC',body.name).strip()
-    if not name or len(name)>(80 if table=='topics' else 32): fail(422,'invalid_name','名称长度不合法')
-    try:
-        with db.transaction():
-            if entity:
-                row=one(db,f'UPDATE app.{table} SET name=%s WHERE owner_id=%s AND id=%s RETURNING id,name',(name,owner,entity))
-                if not row: fail(404,'not_found','对象不存在或不可用')
-            else:
-                entity=uuid4()
-                if table=='topics':
-                    if not body.kind: fail(422,'missing_kind','请选择分类类型')
-                    row=one(db,'INSERT INTO app.topics(id,owner_id,kind,name) VALUES(%s,%s,%s,%s) RETURNING id,name,kind',(entity,owner,body.kind,name))
-                else:
-                    row=one(db,'INSERT INTO app.tags(id,owner_id,name) VALUES(%s,%s,%s) RETURNING id,name',(entity,owner,name))
-    except psycopg.errors.UniqueViolation: fail(409,'duplicate','名称已存在')
-    return row
-
-
-def taxonomy_delete(db,owner,table,entity):
-    try:
-        with db.transaction():
-            row=one(db,f'DELETE FROM app.{table} WHERE owner_id=%s AND id=%s RETURNING id',(owner,entity))
-            if not row: fail(404,'not_found','对象不存在或不可用')
-    except psycopg.errors.ForeignKeyViolation: fail(409,'in_use','仍被卡片使用，请先移除关联')
+def deprecated(response):
+    response.headers['Deprecation']='true'
+    response.headers['Link']='</api/tags>; rel="successor-version"'
 
 
 @router.get('/topics')
-def topics(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo']|None=None): return taxonomy_list(db,owner,'topics',kind)
+def topics(response:Response,db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','memo']|None=None):
+    deprecated(response)
+    return tag_service.listing(db,owner,'topic',kind)
 
 
 @router.post('/topics',status_code=201)
-def create_topic(body:TaxonomyCreate,db:Db,owner:Owner): return taxonomy_write(db,owner,'topics',body)
+def create_topic(body:TaxonomyCreate,response:Response,db:Db,owner:Owner):
+    deprecated(response)
+    return tag_service.write(db,owner,body,'topic')
 
 
 @router.patch('/topics/{entity}')
-def edit_topic(entity:UUID,body:TaxonomyPatch,db:Db,owner:Owner): return taxonomy_write(db,owner,'topics',body,entity)
+def edit_topic(entity:UUID,body:TaxonomyPatch,response:Response,db:Db,owner:Owner):
+    deprecated(response)
+    return tag_service.write(db,owner,body,'topic',entity)
 
 
 @router.delete('/topics/{entity}',status_code=204)
-def delete_topic(entity:UUID,db:Db,owner:Owner): taxonomy_delete(db,owner,'topics',entity)
+def delete_topic(entity:UUID,response:Response,db:Db,owner:Owner):
+    deprecated(response)
+    tag_service.delete(db,owner,entity,'topic')
 
 
 @router.get('/tags')
-def tags(db:Db,owner:Owner): return taxonomy_list(db,owner,'tags')
+def tags(db:Db,owner:Owner): return tag_service.listing(db,owner)
 
 
 @router.post('/tags',status_code=201)
-def create_tag(body:TaxonomyCreate,db:Db,owner:Owner): return taxonomy_write(db,owner,'tags',body)
+def create_tag(body:TaxonomyCreate,db:Db,owner:Owner): return tag_service.write(db,owner,body)
 
 
 @router.patch('/tags/{entity}')
-def edit_tag(entity:UUID,body:TaxonomyPatch,db:Db,owner:Owner): return taxonomy_write(db,owner,'tags',body,entity)
+def edit_tag(entity:UUID,body:TaxonomyPatch,db:Db,owner:Owner): return tag_service.write(db,owner,body,entity=entity)
 
 
 @router.delete('/tags/{entity}',status_code=204)
-def delete_tag(entity:UUID,db:Db,owner:Owner): taxonomy_delete(db,owner,'tags',entity)
+def delete_tag(entity:UUID,db:Db,owner:Owner): tag_service.delete(db,owner,entity)
 
 
 @router.get('/collections')
@@ -196,7 +175,8 @@ def reorder(entity:UUID,body:Order,db:Db,owner:Owner): return collections.update
 
 
 @router.get('/reviews/queue')
-def review_queue(db:Db,owner:Owner,topic_id:UUID|None=None,limit:Limit=100): return reviews.queue(db,owner,topic_id,limit)
+def review_queue(db:Db,owner:Owner,topic_id:UUID|None=None,tag_ids:Annotated[list[UUID]|None,Query()]=None,tag_match:Literal['all','any']='all',limit:Limit=100):
+    return reviews.queue(db,owner,topic_id,limit,tag_ids=tag_ids,tag_match=tag_match)
 
 
 @router.get('/reviews/summary')

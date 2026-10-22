@@ -52,7 +52,8 @@ class CardContent(Input):
     source_url: str | None = Field(default=None, max_length=2048)
     source_locator: str | None = Field(default=None, max_length=200)
     topic_ids: list[UUID] = Field(default_factory=list, max_length=10)
-    tag_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    tag_ids: list[UUID] = Field(default_factory=list, max_length=30)
+    taxonomy_mode: Literal['unified'] | None = None
     processing_state: Literal['inbox', 'organized'] = 'inbox'
     is_bookmarked: bool = False
 
@@ -72,6 +73,8 @@ class CardContent(Input):
 
     @model_validator(mode='after')
     def valid_content(self):
+        if self.taxonomy_mode == 'unified' and self.topic_ids:
+            raise ValueError('统一标签模式不接收分类')
         if len(set(self.tag_ids))!=len(self.tag_ids): raise ValueError('标签不能重复')
         if self.kind == 'memo':
             if self.memo_format is None or self.form is not None or self.question_md is not None or self.answer_md is not None or self.note_md is not None or self.attachments or self.topic_ids:
@@ -118,6 +121,7 @@ class CardCreate(CardContent):
 
 class CardPatch(Input):
     expected_revision: int = Field(ge=1)
+    taxonomy_mode: Literal['unified'] | None = None
     memo_items: list[MemoItem] | None = Field(default=None, max_length=200)
     title: str | None = Field(default=None, min_length=1, max_length=200)
     question_md: str | None = None

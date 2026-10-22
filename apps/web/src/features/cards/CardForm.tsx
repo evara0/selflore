@@ -88,7 +88,7 @@ export default function CardForm({
       source_title: sourceTitle || null,
       source_url: sourceUrl || null,
       source_locator: locator || null,
-      topic_ids: topics,
+      taxonomy_mode: 'unified',
       tag_ids: tags,
     }
     const json = JSON.stringify(content)

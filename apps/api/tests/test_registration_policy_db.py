@@ -33,7 +33,7 @@ def policy_database(tmp_path_factory):
         with psycopg.connect(host="127.0.0.1", port=6180, dbname="selflore_dev", user="postgres") as db:
             db.execute("INSERT INTO app.users(id,username,password_hash) VALUES(%s,'legacy',%s)", (uuid4(), hasher.hash("legacy-password")))
             before = db.execute("SELECT id, username, password_hash FROM app.users").fetchall()
-        assert migrate("dev", "127.0.0.1", 6180) == ["0002_card_workspace", "0003_knowledge_review", "0004_relax_username", "0005_reference_media", "0006_memo_cards"]
+        assert migrate("dev", "127.0.0.1", 6180) == ["0002_card_workspace", "0003_knowledge_review", "0004_relax_username", "0005_reference_media", "0006_memo_cards", "0007_unified_card_tags"]
         assert migrate("dev", "127.0.0.1", 6180) == []
         with psycopg.connect(host="127.0.0.1", port=6180, dbname="selflore_dev", user="postgres") as db:
             assert db.execute("SELECT id, username, password_hash FROM app.users").fetchall() == before

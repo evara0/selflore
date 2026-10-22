@@ -58,3 +58,25 @@ svg { flex-shrink: 0; }
 .panel { border: 1px solid var(--border); border-radius: 2px; background: var(--paper); min-width: 0; }
 @media (max-width: 600px) { input,textarea,select { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Shared account tag selector: long names and touch controls must wrap. */
+.tag-selector { min-width: 0; display: grid; gap: 10px; }
+.tag-selector .choice-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-selector .choice-tags button, .tags .tag { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
+.tag-selector .choice-tags button { min-height: 44px; text-align: left; }
+.tag-selector .inline-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-selector .inline-form input { flex: 1 1 140px; width: 100%; }
+.tag-options { max-height: 240px; overflow-y: auto; padding: 4px; }
+.tag-filter { border: 1px solid var(--border); padding: 12px; margin: 12px 0 20px; min-width: 0; }
+.tag-filter > summary { cursor: pointer; min-height: 30px; overflow-wrap: anywhere; }
+.tag-filter .tag-selector { margin-top: 12px; }
+.tag-filter .inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tag-filter label { margin: 10px 0; }
+.study-toolbar .tag-filter { flex: 1 1 100%; }
+.tag-options button.keyboard-active { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+.study-toolbar { flex-wrap: wrap; }
+.tag-management .inline-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-management .directory-row { flex-wrap: wrap; }
+.tag-management .directory-row > div { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.tag-management .directory-row button { min-height: 44px; }
