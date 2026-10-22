@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { randomUUID } from 'node:crypto'
 
 test('image reference capture, original, editing, collection, reload and logout', async ({ page, request }, testInfo) => {

@@ -137,6 +137,8 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 
 在另一终端的 `apps/web` 设置 `SELFLORE_TEST_ISOLATED=1`，执行 `pnpm test:e2e`。当前配置使用本机Chrome和24568服务；不要把测试指向演示站点或日常账号。用例会创建测试账号与内容，不能与清理数据库的后端测试同时运行。
 
+真实接口用例还须继承明确的 `SELFLORE_TEST_APP_DSN`，只允许 `host=127.0.0.1 port=6179 dbname=selflore_dev user=selflore_dev_app`；密码可来自该DSN或 `SELFLORE_APP_PASSWORD`，不打印到日志。共用的测试fixture在每例开始前调用[隔离辅助脚本](../../scripts/reset_browser_registration.py)，仅清理该库的本机注册限流桶，不删除账号、会话、内容或登录限流。日常6171、生产及连接重定向参数会被拒绝；纯替身用例无需此fixture。Playwright维持单worker串行，禁止并行共享此库。单个用例仍经过产品的15分钟5次注册限制，专门的浏览器用例验证第六次返回429；不要放宽产品限流来运行测试。发布入口会提供这些隔离变量和API虚拟环境。
+
 失败trace默认位于 `.cache/card-tests/browser-results`，部分用例另向忽略的docs或缓存目录输出截图；报告应写实际生成路径。按本文视觉审查流程另存当前证据，旧截图不能替代新检查。
 
 服务用 `Ctrl+C` 停止；PostgreSQL仅用pg_ctl停止自己创建的确切缓存data_directory，不停止其他实例或清理业务数据。截图、缓存及离线库仍需按私有资料保管。
