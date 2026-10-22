@@ -175,9 +175,18 @@ test('cloze reader, stable random order and input keyboard isolation', async ({ 
   await page.getByRole('combobox', { name: '翻阅顺序' }).selectOption('random')
   const first = await page.locator('.reader-card h2').textContent()
   // Move to the beginning, then traverse the same random sequence twice.
-  while (await page.getByRole('button', { name: '← 上一张' }).isEnabled()) await page.getByRole('button', { name: '← 上一张' }).click()
+  while (await page.getByRole('button', { name: '← 上一张' }).isEnabled()) {
+    const previous = await page.locator('.reader-card').getAttribute('data-card-id')
+    await page.getByRole('button', { name: '← 上一张' }).click()
+    await expect(page.locator('.reader-card')).not.toHaveAttribute('data-card-id', previous!)
+  }
   const titles: string[] = [await page.locator('.reader-card h2').textContent() || '']
-  while (await page.getByRole('button', { name: '下一张 →' }).isEnabled()) { await page.getByRole('button', { name: '下一张 →' }).click(); titles.push(await page.locator('.reader-card h2').textContent() || '') }
+  while (await page.getByRole('button', { name: '下一张 →' }).isEnabled()) {
+    const previous = await page.locator('.reader-card').getAttribute('data-card-id')
+    await page.getByRole('button', { name: '下一张 →' }).click()
+    await expect(page.locator('.reader-card')).not.toHaveAttribute('data-card-id', previous!)
+    titles.push(await page.locator('.reader-card h2').textContent() || '')
+  }
   for (let n = titles.length - 2; n >= 0; n--) { await page.getByRole('button', { name: '← 上一张' }).click(); await expect(page.locator('.reader-card h2')).toHaveText(titles[n]) }
   expect(new Set(titles).size).toBe(3); expect(titles).toContain(first)
   const after = await (await request.get(base + '/api/reviews/summary')).json()
