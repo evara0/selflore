@@ -1,3 +1,4 @@
+import CardTransfer from './CardTransfer'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   useData,
@@ -85,6 +86,7 @@ export default function Profile() {
           </QueryState>
         </aside>
         <section className="profile-main">
+          <CardTransfer />
           <QueryState query={summary}>
             <div className="stats-grid">
               {[

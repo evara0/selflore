@@ -82,7 +82,7 @@ def test_0007_upgrade_preserves_legacy_row_and_backup_contract(tmp_path, monkeyp
         db.execute("INSERT INTO app.cards(id,owner_id,code,kind,memo_format,title,search_text,client_request_id,creation_request_digest) VALUES(%s,%s,'legacy','memo','checklist','旧清单','旧条目',%s,%s)",(card,owner,request,'0'*64))
         db.execute("INSERT INTO app.memo_items(id,owner_id,memo_card_id,text,position,is_completed,completed_at) VALUES(%s,%s,%s,'旧条目',0,true,now())",(row,owner,card))
         before=db.execute('SELECT id,text,position,is_completed,completed_at FROM app.memo_items').fetchall()
-    assert migrate('prod','127.0.0.1',6179)==['0008_tabular_checklists']
+    assert migrate('prod','127.0.0.1',6179)==['0008_tabular_checklists','0009_card_import_batches']
     assert migrate('prod','127.0.0.1',6179)==[]
     with psycopg.connect(DSN) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')

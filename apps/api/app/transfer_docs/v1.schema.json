@@ -1,0 +1,506 @@
+{
+  "$defs": {
+    "ExportInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "scope": {
+          "const": "all-types-all-lifecycles",
+          "default": "all-types-all-lifecycles",
+          "title": "Scope",
+          "type": "string"
+        },
+        "card_count": {
+          "minimum": 0,
+          "title": "Card Count",
+          "type": "integer"
+        },
+        "excluded": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        }
+      },
+      "required": [
+        "generated_at",
+        "card_count",
+        "excluded"
+      ],
+      "title": "ExportInfo",
+      "type": "object"
+    },
+    "TransferAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,80}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "path": {
+          "pattern": "^media/[A-Za-z0-9_-]{1,80}\\.(png|jpg|webp)$",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "bytes": {
+          "exclusiveMinimum": 0,
+          "maximum": 20971520,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "mime_type": {
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/webp"
+          ],
+          "title": "Mime Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "path",
+        "sha256",
+        "bytes",
+        "mime_type"
+      ],
+      "title": "TransferAsset",
+      "type": "object"
+    },
+    "TransferAttachment": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_key": {
+          "pattern": "^[A-Za-z0-9_-]{1,80}$",
+          "title": "Asset Key",
+          "type": "string"
+        },
+        "caption": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Caption",
+          "type": "string"
+        },
+        "alt_text": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Alt Text",
+          "type": "string"
+        },
+        "creator_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Creator Name"
+        }
+      },
+      "required": [
+        "asset_key"
+      ],
+      "title": "TransferAttachment",
+      "type": "object"
+    },
+    "TransferCard": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "knowledge",
+            "opinion",
+            "reference",
+            "memo"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "memo_format": {
+          "anyOf": [
+            {
+              "enum": [
+                "note",
+                "checklist"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Memo Format"
+        },
+        "memo_columns": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Memo Columns",
+          "type": "array"
+        },
+        "memo_column_count": {
+          "default": 1,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Memo Column Count",
+          "type": "integer"
+        },
+        "form": {
+          "anyOf": [
+            {
+              "enum": [
+                "qa",
+                "cloze"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Form"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "question_md": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question Md"
+        },
+        "answer_md": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer Md"
+        },
+        "body_md": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body Md"
+        },
+        "note_md": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note Md"
+        },
+        "source_author": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Author"
+        },
+        "source_publisher": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Publisher"
+        },
+        "source_platform": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Platform"
+        },
+        "source_published_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Published On"
+        },
+        "source_title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Title"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Url"
+        },
+        "source_locator": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Locator"
+        },
+        "processing_state": {
+          "default": "inbox",
+          "enum": [
+            "inbox",
+            "organized"
+          ],
+          "title": "Processing State",
+          "type": "string"
+        },
+        "is_bookmarked": {
+          "default": false,
+          "title": "Is Bookmarked",
+          "type": "boolean"
+        },
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,80}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Tags",
+          "type": "array"
+        },
+        "lifecycle": {
+          "default": "active",
+          "enum": [
+            "active",
+            "archived",
+            "trashed"
+          ],
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "memo_items": {
+          "items": {
+            "$ref": "#/$defs/TransferItem"
+          },
+          "maxItems": 200,
+          "title": "Memo Items",
+          "type": "array"
+        },
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/TransferAttachment"
+          },
+          "maxItems": 10,
+          "title": "Attachments",
+          "type": "array"
+        },
+        "link_keys": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_-]{1,80}$",
+            "type": "string"
+          },
+          "maxItems": 2000,
+          "title": "Link Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "title",
+        "key"
+      ],
+      "title": "TransferCard",
+      "type": "object"
+    },
+    "TransferItem": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "pattern": "^[A-Za-z0-9_-]{1,80}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "extra_values": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Extra Values",
+          "type": "array"
+        },
+        "is_completed": {
+          "default": false,
+          "title": "Is Completed",
+          "type": "boolean"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "target_keys": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_-]{1,80}$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Target Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "text"
+      ],
+      "title": "TransferItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "selflore.cards",
+      "title": "Format",
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "cards": {
+      "items": {
+        "$ref": "#/$defs/TransferCard"
+      },
+      "maxItems": 2000,
+      "title": "Cards",
+      "type": "array"
+    },
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/TransferAsset"
+      },
+      "maxItems": 10000,
+      "title": "Assets",
+      "type": "array"
+    },
+    "export_info": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExportInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "cards"
+  ],
+  "title": "TransferDocument",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

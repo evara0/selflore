@@ -38,7 +38,7 @@ def test_0005_to_memo_preserves_all_existing_tables_and_media_metadata(tmp_path,
         db.execute('INSERT INTO app.collection_items(id,owner_id,collection_id,card_id,position) VALUES(%s,%s,%s,%s,0)',(uuid4(),owner,collection,reference))
         columns=db.execute("SELECT table_name,array_agg(column_name::text ORDER BY ordinal_position) FROM information_schema.columns WHERE table_schema='app' GROUP BY table_name").fetchall()
         before={name:db.execute(sql.SQL('SELECT {} FROM app.{} ORDER BY 1').format(sql.SQL(',').join(map(sql.Identifier,names)),sql.Identifier(name))).fetchall() for name,names in columns}
-    assert migrate('prod','127.0.0.1',6179)==['0006_memo_cards','0007_unified_card_tags','0008_tabular_checklists']
+    assert migrate('prod','127.0.0.1',6179)==['0006_memo_cards','0007_unified_card_tags','0008_tabular_checklists','0009_card_import_batches']
     assert migrate('prod','127.0.0.1',6179)==[]
     with psycopg.connect(DSN) as db:
         db.execute('SET LOCAL ROLE selflore_prod_owner')
