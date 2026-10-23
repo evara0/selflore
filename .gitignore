@@ -3,6 +3,7 @@
 /.agents/
 
 # Local deployment material
+/handoff/
 /local-deployment/
 /deploy/
 /DEPLOYMENT_*.md
