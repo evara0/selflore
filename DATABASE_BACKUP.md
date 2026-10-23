@@ -49,4 +49,4 @@ ready清单包含回收站、归档及尚未被卡片引用的ready附件；不�
 
 生产由维护者本机发布流程执行数据库与媒体一致备份、生成受保护收据并下载核验副本，不能把本机固定开发库命令改成生产连接。程序升级入口见[维护卡](MAINTENANCE.md#程序更新到目标环境)。
 
-旧批次的实际目录、表数和测试结果已迁至[历史验收记录](openspec/changes/consolidate-public-operations-docs/historical-validation.md)，不作为新环境前提。后续每次演练应记录自己的目标、摘要、时间和结果。
+旧批次的实际目录、表数和测试结果已迁至[历史验收记录](openspec/changes/archive/2026-10-23-consolidate-public-operations-docs/historical-validation.md)，不作为新环境前提。后续每次演练应记录自己的目标、摘要、时间和结果。

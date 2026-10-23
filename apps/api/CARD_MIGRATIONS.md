@@ -48,7 +48,7 @@
 
 只允许在能力标记、迁移清单和API等相关输入均已证明兼容时自动回退应用。缺少备忘或资料能力的旧包不可直接回退；数据库不执行反向SQL。探针失败后应保留真实状态，使用兼容版本修复，不伪造能力标记。
 
-迁移及恢复的复跑方法见[本地验证](WORKSPACE_TESTING.md)。历史实例的表数、备份位置和验收结果不属于当前操作前提，已迁至[历史验收记录](../../openspec/changes/consolidate-public-operations-docs/historical-validation.md)。
+迁移及恢复的复跑方法见[本地验证](WORKSPACE_TESTING.md)。历史实例的表数、备份位置和验收结果不属于当前操作前提，已迁至[历史验收记录](../../openspec/changes/archive/2026-10-23-consolidate-public-operations-docs/historical-validation.md)。
 
 
 ## 统一标签升级与恢复（0007）

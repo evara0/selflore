@@ -166,7 +166,7 @@ pnpm exec playwright test e2e/editor-boundaries.spec.ts
 | 备忘交互与布局 | `apps/web/src/memo.test.tsx`、`apps/web/e2e/memo.spec.ts`、`apps/web/e2e/memo-layout.spec.ts` |
 | 认证、卡片、资料、复习及合集 | 后端tests与前端组件／e2e中的对应模块，回归范围按实际变更选择 |
 
-记录本次命令、环境、提交、pass／fail／skip及范围；历史表数和测试数量不作为通过标准。旧备忘联合恢复及其他批次结果已迁至[历史验收记录](../../openspec/changes/consolidate-public-operations-docs/historical-validation.md)。
+记录本次命令、环境、提交、pass／fail／skip及范围；历史表数和测试数量不作为通过标准。旧备忘联合恢复及其他批次结果已迁至[历史验收记录](../../openspec/changes/archive/2026-10-23-consolidate-public-operations-docs/historical-validation.md)。
 
 ## 维护者本机发布门禁
 

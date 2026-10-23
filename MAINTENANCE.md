@@ -50,7 +50,7 @@ SelfLore 是个人卡片笔记应用；功能与技术概览统一见[README](RE
 
 生产：使用维护者本机发布工具，依次完成指定提交检查与构建、同包暂存、管理员一致备份、本机备份副本核验、迁移、激活及版本／readiness核验。源码、迁移和构建产物随包，数据库、图片及运行凭据独立保留；不执行down SQL，只在已证明兼容时回退应用。自动发布工具不随公开仓库交付。
 
-历史验收放在对应OpenSpec记录；[最近一次已记录的生产发布](openspec/changes/approve-memo-release-tools/validation.md)带有明确提交和证据，不代替每次更新的检查。
+历史验收放在对应OpenSpec记录；[最近一次已记录的生产发布](openspec/changes/archive/2026-10-23-approve-tabular-release-tools/validation.md)带有明确提交和证据，不代替每次更新的检查。
 
 ## 出问题先做什么
 
