@@ -38,3 +38,5 @@ trace确认合集第一次POST成功、目录GET先完成、详情仍旧revision
 确认框等待初次完整浏览器复测33通过、1失败、1跳过，失败是新增类型断言将history.back实际beforeunload误认为confirm。现明确区分原生文档返回beforeunload与应用内取消confirm，仍逐步等待处理完成并断言保留草稿／离开详情；没有去掉三次确认或自动重试。随后workspace.spec.ts的4项真实接口浏览器测试全部通过，0跳过；报告.cache/collection-fix-workspace.json。任务1.4完成。最终全套及视觉结果见产品修复validation.md；本轮未提交、推送或操作生产。
 
 最终工作区完整浏览器35/35通过、0失败／跳过／flaky，报告.cache/collection-fix-browser-final.json；产品修复的组件81项和六张实际查看截图也通过。两个变更本地验收已完成，任务2.1仍待后续Git交付和正式发布，不把本地验收当作已部署。
+
+2026-10-23正式交付完成：修复已提交推送f99ebe5，GitHub CI运行39893378189成功。最终候选20261023032742-be0ac562重新执行完整发布门禁通过，后端204、前端81、浏览器35、执行器36、备份适配器3均无失败或跳过。新的停写备份已下载并完成23表隔离恢复及迁移演练；生产迁移、激活、Doctor、管理员状态和原包证据复核通过，线上运行同一候选／f99ebe5。任务2.1完成，详见approve-tabular-release-tools/validation.md最终记录。
