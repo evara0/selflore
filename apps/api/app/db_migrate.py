@@ -10,6 +10,7 @@ from psycopg import sql
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 MIGRATION_LOCK = 436177100223001
 GRANTS = {
+    "0009_card_import_batches": {"card_import_batches": "SELECT, INSERT"},
     "0007_unified_card_tags": {
         "tag_aliases": "SELECT, INSERT, UPDATE", "card_tag_sources": "SELECT, INSERT, UPDATE, DELETE",
         "legacy_tags": "SELECT", "legacy_card_tags": "SELECT",

@@ -1,0 +1,46 @@
+.card-transfer { padding: 24px; margin-bottom: 24px; min-width: 0; }
+.card-transfer p, .card-transfer li, .transfer-file { overflow-wrap: anywhere; }
+.card-transfer h2 { margin-top: 0; }
+.card-transfer h3 { margin-top: 24px; }
+.transfer-links, .transfer-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.transfer-actions label, .card-transfer > label { display: grid; gap: 8px; min-width: 0; }
+.card-transfer input[type='file'] { width: 100%; max-width: 100%; box-sizing: border-box; }
+.card-transfer select { max-width: 100%; }
+.transfer-errors { padding-left: 20px; }
+.transfer-errors li { margin-bottom: 10px; }
+@media (max-width: 600px) { .card-transfer { padding: 16px; } .transfer-actions { align-items: stretch; } .transfer-actions label { width: 100%; } }
+
+/* Keep native file selection semantics while matching the workspace buttons. */
+.card-transfer input[type='file'] {
+  padding: 4px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  font-size: 13px;
+}
+.card-transfer input[type='file']::file-selector-button {
+  margin-right: 12px;
+  padding: 9px 15px;
+  min-height: 44px;
+  border: 1px solid var(--control-border);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.card-transfer input[type='file']:hover:not(:disabled)::file-selector-button {
+  background: var(--wash);
+}
+.card-transfer input[type='file']:disabled {
+  opacity: .55;
+}
+.card-transfer input[type='file']:disabled::file-selector-button {
+  cursor: default;
+}
+
+.transfer-help { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.transfer-help summary { cursor: pointer; }
+.transfer-help .transfer-links { margin-top: 16px; }
+.transfer-help p { margin: 12px 0 0; }

@@ -75,7 +75,7 @@ def test_upgrade_dedup_provenance_retries_backup_restore(tmp_path,monkeypatch):
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert not ready(db)
     migration_started=time.perf_counter()
-    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists']
+    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists','0009_card_import_batches']
     migration_seconds=time.perf_counter()-migration_started
     assert migrate('prod','127.0.0.1',6179)==[]
     with psycopg.connect(DSN,row_factory=dict_row) as db:
@@ -142,4 +142,4 @@ def test_invalid_normalization_and_grant_failure_rollback(tmp_path,monkeypatch):
         db.execute('SET LOCAL ROLE selflore_prod_owner')
         assert db.execute("SELECT to_regclass('app.tag_aliases')").fetchone()==(None,)
         assert db.execute("SELECT count(*) FROM app.schema_migrations WHERE version='0007_unified_card_tags'").fetchone()==(0,)
-    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists']
+    assert migrate('prod','127.0.0.1',6179)==['0007_unified_card_tags','0008_tabular_checklists','0009_card_import_batches']

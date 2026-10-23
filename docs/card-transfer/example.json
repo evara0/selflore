@@ -1,0 +1,72 @@
+{
+  "format": "selflore.cards",
+  "version": 1,
+  "cards": [
+    {
+      "key": "qa",
+      "kind": "knowledge",
+      "form": "qa",
+      "title": "主动回忆",
+      "question_md": "什么是主动回忆？",
+      "answer_md": "主动从记忆提取信息。",
+      "tags": [
+        "学习"
+      ]
+    },
+    {
+      "key": "cloze",
+      "kind": "knowledge",
+      "form": "cloze",
+      "title": "填空",
+      "body_md": "{{c1::主动回忆}}有助于学习。"
+    },
+    {
+      "key": "opinion",
+      "kind": "opinion",
+      "title": "我的理解",
+      "body_md": "我认为练习比收藏更有效。[[card:qa|相关知识]]",
+      "link_keys": [
+        "reference"
+      ]
+    },
+    {
+      "key": "reference",
+      "kind": "reference",
+      "title": "材料摘录",
+      "body_md": "这是一段原始材料。",
+      "note_md": "仍需核实来源。"
+    },
+    {
+      "key": "memo",
+      "kind": "memo",
+      "memo_format": "note",
+      "title": "明天再看"
+    },
+    {
+      "key": "checklist",
+      "kind": "memo",
+      "memo_format": "checklist",
+      "title": "学习清单",
+      "memo_columns": [
+        "事项",
+        "时间",
+        "说明"
+      ],
+      "memo_column_count": 1,
+      "memo_items": [
+        {
+          "key": "row1",
+          "text": "复习主动回忆",
+          "extra_values": [
+            "明天",
+            "隐藏列仍保留"
+          ],
+          "is_completed": false,
+          "target_keys": [
+            "qa"
+          ]
+        }
+      ]
+    }
+  ]
+}

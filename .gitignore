@@ -1,5 +1,6 @@
 # Local project materials
-/docs/
+/docs/*
+!/docs/card-transfer/
 /.agents/
 
 # Local deployment material

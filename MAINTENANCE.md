@@ -1,8 +1,8 @@
 ---
 title: "SelfLore · 项目维护卡"
 project: "selflore"
-updated: "2026-10-22"
-status: "本次核对源码与文档；历史生产发布见验收记录，未重新部署"
+updated: "2026-10-23"
+status: "独立worktree实施卡片内容导入导出；未发布、未迁移真实业务库"
 environments:
   - "Windows 本地开发"
   - "Windows 隔离测试"
@@ -73,3 +73,7 @@ SelfLore 是个人卡片笔记应用；功能与技术概览统一见[README](RE
 清单现在支持1–3个可命名文本字段，减少显示数量只隐藏并保留值。新增0008须按[迁移说明](apps/api/CARD_MIGRATIONS.md#多字段清单升级)先备份、隔离恢复验证，再独立迁移；旧应用不作为多字段清单直接写入的回退目标。本worktree仅在自有一次性环境验证，未迁移日常6171或生产，未更新／部署私有发布工具。
 
 行内知识独立保存，返回后仍须保存清单；清单失败可重试，知识不会自动删除。浏览器草稿只在当前页面保持，关闭前保存。
+
+## 卡片内容导入与迁移
+
+“我的”→卡片导入与导出。格式、AI提示词、限制和恢复边界见[交换说明](docs/card-transfer/README.md)。需先独立应用0009迁移并重启API；文档下载文件在apps/api/app/transfer_docs，须和docs/card-transfer同步（在apps/api运行uv run python -m app.card_transfer_docs），测试核对字节一致性。前端重建后生效。ZIP包含关联原图；JSON仅适用于无图片内容。卡片内容包不保留合集结构和复习历史，全站灾备继续使用数据库／媒体备份。失败的媒体尝试由运维目录transfer摘要JSON跟踪，同批次重试只清理未登记尝试；不要删除ready文件。此次未发布或迁移真实业务库。

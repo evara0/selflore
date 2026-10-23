@@ -13,6 +13,7 @@ from app.auth import router as auth_router
 from app.routers.workspace import router as workspace_router
 from app.routers.attachments import router as attachments_router
 from app.routers.sources import router as sources_router
+from app.routers.card_transfer import router as card_transfer_router
 from app.media_telemetry import MediaTelemetry
 import psycopg
 from fastapi.responses import JSONResponse
@@ -64,6 +65,7 @@ def create_app(web_dist_dir: Path = WEB_DIST_DIR) -> FastAPI:
     app.include_router(workspace_router)
     app.include_router(attachments_router)
     app.include_router(sources_router)
+    app.include_router(card_transfer_router)
 
     @app.exception_handler(psycopg.OperationalError)
     async def database_unavailable(request, exc):

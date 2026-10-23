@@ -18,7 +18,7 @@ from app.main import create_app
 
 ORIGIN = {"Origin": "http://127.0.0.1:24566"}
 PASSWORD = "a-long-test-password-123"
-TEST_TABLES = "app.card_tag_sources, app.tag_aliases, app.legacy_tags, app.legacy_card_tags, app.memo_item_links, app.memo_items, app.card_attachments, app.attachments, app.review_logs, app.review_states, app.review_units, app.activity_events, app.collection_items, app.card_links, app.card_tags, app.card_topics, app.cards, app.collections, app.tags, app.topics, app.user_profiles, app.account_audit, app.auth_sessions, app.auth_login_throttle, app.users"
+TEST_TABLES = "app.card_import_batches, app.card_tag_sources, app.tag_aliases, app.legacy_tags, app.legacy_card_tags, app.memo_item_links, app.memo_items, app.card_attachments, app.attachments, app.review_logs, app.review_states, app.review_units, app.activity_events, app.collection_items, app.card_links, app.card_tags, app.card_topics, app.cards, app.collections, app.tags, app.topics, app.user_profiles, app.account_audit, app.auth_sessions, app.auth_login_throttle, app.users"
 
 
 @pytest.fixture(autouse=True)
@@ -212,7 +212,7 @@ def test_migration_history_rollback_and_app_privileges(tmp_path: Path):
     (tmp_path / first.name).write_bytes(first.read_bytes())
     for migration in MIGRATIONS_DIR.glob('*.sql'):
         (tmp_path / migration.name).write_bytes(migration.read_bytes())
-    (tmp_path / "0009_fail.sql").write_text("CREATE TABLE app.should_rollback (id integer); SELECT 1/0;", encoding="utf-8")
+    (tmp_path / "0010_fail.sql").write_text("CREATE TABLE app.should_rollback (id integer); SELECT 1/0;", encoding="utf-8")
     with pytest.raises(psycopg.Error):
         migrate("dev", "127.0.0.1", 6179, tmp_path)
     with psycopg.connect(os.environ["SELFLORE_TEST_MIGRATOR_DSN"]) as connection:
@@ -220,7 +220,7 @@ def test_migration_history_rollback_and_app_privileges(tmp_path: Path):
             cursor.execute("SET LOCAL ROLE selflore_dev_owner")
             cursor.execute("SELECT to_regclass('app.should_rollback')")
             assert cursor.fetchone()[0] is None
-            cursor.execute("SELECT count(*) FROM app.schema_migrations WHERE version = '0009_fail'")
+            cursor.execute("SELECT count(*) FROM app.schema_migrations WHERE version = '0010_fail'")
             assert cursor.fetchone()[0] == 0
     with psycopg.connect(os.environ["SELFLORE_TEST_APP_DSN"]) as connection:
         with connection.cursor() as cursor:
