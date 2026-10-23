@@ -56,11 +56,28 @@ test('real creation, stable reference, mixed reader, rating and personal summary
   await page.getByRole('button', { name: '保存合集' }).click()
   await expect(page).toHaveURL(/collections\/[0-9a-f-]+$/)
   collectionId = page.url().split('/').pop()!
+  async function captureCollection(state: string) {
+    const folder = process.env.SELFLORE_CAPTURE_DIR
+    if (!folder) return
+    await mkdir(folder, { recursive: true })
+    const original = page.viewportSize()!
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => document.fonts.ready)
+      await page.screenshot({ path: `${folder}/collection-${state}-${width}.png`, fullPage: true })
+    }
+    await page.setViewportSize(original)
+  }
   for (const title of ['主动回忆为什么有效？', '把学习变成一场与自己的对话']) {
     await page.getByRole('button', { name: '＋ 添加卡片' }).click()
+    if (title.startsWith('主动')) {
+      await expect(page.locator('.picker-results').getByRole('button', { name: /主动回忆/ })).toBeVisible()
+      await captureCollection('picker')
+    }
     await page.locator('.picker-results').getByRole('button', { name: new RegExp(title.replace('？', '.')) }).click()
     await expect(page.locator('.directory-row')).toHaveCount(title.startsWith('主动') ? 1 : 2)
   }
+  await captureCollection('directory')
   await page.getByRole('button', { name: '翻阅卡片', exact: true }).click()
   await expect(page.locator('.reader-card h2')).toHaveText('主动回忆为什么有效？')
   await expect(page.locator('.reader-card')).toHaveAttribute('data-card-ink', knowledgeInk!)
@@ -142,16 +159,23 @@ test('edit conflicts retain input and unsaved navigation requires a decision', a
   await page.getByRole('button', { name: '保存卡片', exact: true }).click()
   await expect(page.getByLabel('标题', { exact: true })).toHaveValue('保留在编辑器中的草稿')
   await expect(page.getByRole('button', { name: '核对后使用最新版本号' })).toBeVisible()
-  // Native history navigation uses the same unsaved-input decision as in-app links.
-  page.once('dialog', dialog => dialog.dismiss())
-  await page.evaluate(() => history.back())
+  async function decideNavigation(action: () => Promise<unknown>, leave: boolean, type = 'confirm') {
+    await Promise.all([
+      page.waitForEvent('dialog').then(async dialog => {
+        expect(dialog.type()).toBe(type)
+        if (leave) await dialog.accept()
+        else await dialog.dismiss()
+      }),
+      action(),
+    ])
+  }
+  // page.goto created document history; native back uses the beforeunload guard.
+  await decideNavigation(() => page.evaluate(() => history.back()), false, 'beforeunload')
   await expect(page).toHaveURL(/\/edit$/)
-  page.once('dialog', dialog => dialog.dismiss())
-  await page.getByRole('link', { name: '取消', exact: true }).click()
+  await decideNavigation(() => page.getByRole('link', { name: '取消', exact: true }).click(), false)
   await expect(page).toHaveURL(/\/edit$/)
-  page.once('dialog', dialog => dialog.accept())
-  await page.getByRole('link', { name: '取消', exact: true }).click()
-  await expect(page).toHaveURL(/cards\//)
+  await decideNavigation(() => page.getByRole('link', { name: '取消', exact: true }).click(), true)
+  await expect(page).toHaveURL(new RegExp(`/cards/${knowledgeId}$`))
 })
 test('cloze reader, stable random order and input keyboard isolation', async ({ page, request }) => {
   await login(page)

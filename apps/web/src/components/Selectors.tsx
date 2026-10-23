@@ -17,10 +17,12 @@ export function CardPicker({
   onSelect,
   excluded = [],
   kind,
+  disabled = false,
 }: {
   onSelect: (card: Card) => void
   excluded?: string[]
   kind?: string
+  disabled?: boolean
 }) {
   const [q, setQ] = useState('')
   const [offset, setOffset] = useState(0)
@@ -41,7 +43,7 @@ export function CardPicker({
           {query.data?.items
             .filter((c) => !excluded.includes(c.id) && (!kind || c.kind === kind))
             .map((c) => (
-              <button type="button" key={c.id} onClick={() => onSelect(c)}>
+              <button type="button" key={c.id} disabled={disabled} onClick={() => onSelect(c)}>
                 <b>{c.title}</b>
                 <small>
                   {cardKindName(c.kind)} · {c.code}

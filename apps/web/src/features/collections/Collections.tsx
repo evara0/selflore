@@ -47,7 +47,9 @@ function CollectionWorkspace() {
     [search, setSearch] = useSearchParams(),
     [message, setMessage] = useState(''),
     [picker, setPicker] = useState(false),
+    [pending, setPending] = useState(false),
     [reveal, setReveal] = useState(false)
+  const mutationInFlight = useRef(false)
   const api = useApi(),
     refresh = useRefresh()
   const { guest, openLogin } = useIdentity()
@@ -141,12 +143,18 @@ function CollectionWorkspace() {
     return () => window.removeEventListener('keydown', key)
   }, [reading, index, navigateItem])
   async function mutate(path: string, method: string, body: object) {
+    if (mutationInFlight.current) return
+    mutationInFlight.current = true
+    setPending(true)
     try {
       await api(path, method, { ...body, expected_revision: collection.data!.revision })
       setMessage('')
       await refresh()
     } catch (error) {
       setMessage((error as Error).message)
+    } finally {
+      mutationInFlight.current = false
+      setPending(false)
     }
   }
   async function reorder(itemId: string, step: number) {
@@ -253,6 +261,7 @@ function CollectionWorkspace() {
                     </div>
                     <button
                       aria-label="收藏合集"
+                      disabled={pending}
                       aria-pressed={collection.data.is_favorite}
                       onClick={() =>
                         void mutate(`/collections/${id}`, 'PATCH', {
@@ -288,13 +297,17 @@ function CollectionWorkspace() {
                       <option value="ordered">顺序翻阅</option>
                       <option value="random">随机翻阅</option>
                     </select>
-                    <button onClick={() => (guest ? openLogin() : setPicker(!picker))}>
+                    <button
+                      disabled={pending}
+                      onClick={() => (guest ? openLogin() : setPicker(!picker))}
+                    >
                       ＋ 添加卡片
                     </button>
                   </div>
                   <p role="status">{message}</p>
                   {picker && (
                     <CardPicker
+                      disabled={pending}
                       excluded={directory.data?.items.map((c) => c.id)}
                       onSelect={(c) => {
                         void mutate(`/collections/${id}/items`, 'POST', { card_ids: [c.id] })
@@ -388,7 +401,10 @@ function CollectionWorkspace() {
                         <div className="state panel">
                           <h3>还没有可翻阅的卡片</h3>
                           <p>添加卡片后即可翻阅。</p>
-                          <button onClick={() => (guest ? openLogin() : setPicker(true))}>
+                          <button
+                            disabled={pending}
+                            onClick={() => (guest ? openLogin() : setPicker(true))}
+                          >
                             添加卡片
                           </button>
                         </div>
@@ -413,20 +429,21 @@ function CollectionWorkspace() {
                             </div>
                             <button
                               aria-label={`上移 ${c.title}`}
-                              disabled={!n}
+                              disabled={pending || !n}
                               onClick={() => void reorder(c.item_id, -1)}
                             >
                               ↑
                             </button>
                             <button
                               aria-label={`下移 ${c.title}`}
-                              disabled={n === directory.data!.items.length - 1}
+                              disabled={pending || n === directory.data!.items.length - 1}
                               onClick={() => void reorder(c.item_id, 1)}
                             >
                               ↓
                             </button>
                             <button
                               aria-label={`移除 ${c.title}`}
+                              disabled={pending}
                               onClick={() =>
                                 void mutate(`/collections/${id}/items/${c.item_id}`, 'DELETE', {})
                               }
@@ -441,6 +458,7 @@ function CollectionWorkspace() {
                   <div className="collection-actions">
                     <Link to={`/collections/${id}/edit`}>编辑合集</Link>
                     <button
+                      disabled={pending}
                       onClick={() =>
                         void mutate(`/collections/${id}`, 'PATCH', {
                           is_pinned: !collection.data!.is_pinned,
@@ -450,6 +468,7 @@ function CollectionWorkspace() {
                       {collection.data.is_pinned ? '取消主页置顶' : '置顶到主页'}
                     </button>
                     <button
+                      disabled={pending}
                       onClick={() =>
                         void mutate(`/collections/${id}/lifecycle`, 'POST', {
                           action: collection.data!.lifecycle === 'active' ? 'trash' : 'restore',

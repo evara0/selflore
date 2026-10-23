@@ -487,3 +487,8 @@
  .memo-items>.checklist-table-heading{display:none}
  .inline-knowledge .page-heading h1{font-size:25px}
 }
+
+@media (max-width: 600px) {
+  .collection-layout .toolbar .segmented { flex-basis: 100%; }
+  .collection-layout .toolbar select { flex: 1 1 120px; min-width: 120px; }
+}
