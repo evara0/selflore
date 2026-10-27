@@ -84,7 +84,7 @@ PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，�
 
 `POST /api/sources/resolve`，请求`{"url":"https://example.com/article","mode":"auto"}`；mode为auto（默认）或webpage（强制普通网页）。要求会话、受信任Origin及CSRF，单账号进程内10次/分钟，并发受限返回429；非法／不安全输入422。
 
-响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../SOURCE_CAPTURE.md)。
+响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../handbook/SOURCE_CAPTURE.md)。
 
 
 ## 统一标签与兼容协议（0007）

@@ -21,7 +21,7 @@
 
 ## 升级已有开发库
 
-1. 核对主机、端口、库名、PostgreSQL 18及迁移角色；先按[备份说明](../../DATABASE_BACKUP.md)备份并按需要演练。
+1. 核对主机、端口、库名、PostgreSQL 18及迁移角色；先按[备份说明](../../handbook/DATABASE_BACKUP.md)备份并按需要演练。
 2. 通过本机凭据设施配置 `SELFLORE_MIGRATOR_PASSWORD` 或libpq密码文件。迁移凭据不放进命令参数、Git或日志，不与app日常启动凭据混用。
 3. 以下命令在仓库根的 `apps/api` 执行。6171是固定Windows开发入口的端口；其他环境替换为已核对的目标：
 
@@ -30,7 +30,7 @@
    uv run python -m app.db_migrate --env dev --host 127.0.0.1 --port 6171
    ```
 
-4. 再次运行应核对历史并显示无待执行版本。确认完成后重建前端并重启API；图片目录需另行按[媒体配置](../../MEDIA_STORAGE.md)准备。
+4. 再次运行应核对历史并显示无待执行版本。确认完成后重建前端并重启API；图片目录需另行按[媒体配置](../../handbook/MEDIA_STORAGE.md)准备。
 
 迁移使用 `selflore_dev_migrator`；运行应用使用 `selflore_dev_app`。生产显式选择 `--env prod`，核对实际目标，并按同一候选包的备份、迁移、激活顺序执行；专用部署接入仅在维护者本机管理。
 

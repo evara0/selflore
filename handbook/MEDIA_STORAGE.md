@@ -1,10 +1,10 @@
 # 资料卡、图片存储与排查
 
-本文负责私有图片目录、上传限制、只读诊断及部署前提。资料卡用途见[项目首页](README.md)，请求字段见[API说明](apps/api/WORKSPACE_API.md#资料卡与附件)；备份与恢复统一见[备份说明](DATABASE_BACKUP.md)。
+本文负责私有图片目录、上传限制、只读诊断及部署前提。资料卡用途见[项目首页](../README.md)，请求字段见[API说明](../apps/api/WORKSPACE_API.md#资料卡与附件)；备份与恢复统一见[备份说明](DATABASE_BACKUP.md)。
 
 ## 本机启用
 
-先备份开发库并按[迁移说明](apps/api/CARD_MIGRATIONS.md)应用完整链，再停止日常应用并准备媒体目录。以下命令在Windows仓库根运行，示例将存储放到仓库父目录的 `selflore-data`，不依赖维护者盘符：
+先备份开发库并按[迁移说明](../apps/api/CARD_MIGRATIONS.md)应用完整链，再停止日常应用并准备媒体目录。以下命令在Windows仓库根运行，示例将存储放到仓库父目录的 `selflore-data`，不依赖维护者盘符：
 
 ```powershell
 $repositoryPath = (Get-Location).Path
@@ -73,7 +73,7 @@ P95是服务端响应完成计时，不是浏览器端到端体验。遥测仅�
 
 命令、v1／v2格式、ready范围及隔离恢复统一见[备份与恢复](DATABASE_BACKUP.md)。数据库dump和媒体清单必须对应同一快照；仅有数据库文件不能算当前图片库的完整备份。
 
-删除卡片及移除图片仅改变关系，已完成原图保留，当前没有永久附件清理。媒体不进入Git或发布包，程序更新不移动目录。应用能力与回退条件统一见[迁移兼容性](apps/api/CARD_MIGRATIONS.md#发布与回退)；不能给旧程序伪造标记绕过检查。
+删除卡片及移除图片仅改变关系，已完成原图保留，当前没有永久附件清理。媒体不进入Git或发布包，程序更新不移动目录。应用能力与回退条件统一见[迁移兼容性](../apps/api/CARD_MIGRATIONS.md#发布与回退)；不能给旧程序伪造标记绕过检查。
 
 ## Linux发布准备
 
@@ -86,4 +86,4 @@ python -m app.media_storage --initialize --environment prod --media-root /srv/se
 
 初始化不访问数据库，不自动写运行环境文件；已有非空且标识不符的目录会被拒绝。每个实际目标都需要核验服务账号、目录标识、权限和systemd写入范围，不能从本机初始化结果推断生产已就绪。
 
-生产发布前通过维护者本机流程创建一致快照的联合备份及受保护收据，并完成本机副本核验；备份失败不得迁移或激活新版。具体接入与发布脚本不随公开仓库交付。生产恢复与灾难恢复需要单独的目标核对和演练，不能从成功备份推断已经验证；最近一次已有记录见[生产发布验收](openspec/changes/archive/2026-10-23-approve-tabular-release-tools/validation.md)。本次文档整理不执行这些操作。
+生产发布前通过维护者本机流程创建一致快照的联合备份及受保护收据，并完成本机副本核验；备份失败不得迁移或激活新版。具体接入与发布脚本不随公开仓库交付。生产恢复与灾难恢复需要单独的目标核对和演练，不能从成功备份推断已经验证；最近一次已有记录见[生产发布验收](../openspec/changes/archive/2026-10-23-approve-tabular-release-tools/validation.md)。本次文档整理不执行这些操作。
