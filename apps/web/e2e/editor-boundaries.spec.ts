@@ -287,6 +287,76 @@ test('ordinary knowledge editor does not show quick capture', async ({ page }) =
   await expect(page.getByRole('region', { name: '资料卡快速收录' })).toHaveCount(0)
 })
 
+for (const width of [320, 390, 1280]) {
+  test(`blank card type choices leave for memo without confirmation at ${width}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 })
+    const writes = await fixture(page)
+    const dialogs: string[] = []
+    page.on('dialog', async (dialog) => {
+      dialogs.push(dialog.message())
+      await dialog.dismiss()
+    })
+    const folder = process.env.SELFLORE_CAPTURE_DIR || testInfo.outputPath('visual')
+    await mkdir(folder, { recursive: true })
+    for (const kind of ['knowledge', 'opinion', 'reference']) {
+      await page.goto('/new?kind=' + kind)
+      for (const name of ['事实知识', '观点', '资料卡']) {
+        const tab = page.getByRole('button', { name, exact: true })
+        await tab.click()
+        await tab.click()
+      }
+      await expect(page.getByLabel('标题', { exact: true })).toHaveValue('')
+      await page.evaluate(() => document.fonts.ready)
+      if (kind === 'knowledge')
+        await page.screenshot({ path: path.join(folder, `new-card-${width}-blank.png`) })
+      const memo = page.getByRole('link', { name: '备忘 / 清单', exact: true })
+      await memo.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('heading', { name: '新建备忘', exact: true })).toBeVisible()
+      await expect(page).toHaveURL(/kind=memo/)
+      if (kind === 'knowledge') {
+        await page.evaluate(() => document.fonts.ready)
+        await page.screenshot({ path: path.join(folder, `new-memo-${width}-blank.png`) })
+        await page
+          .getByRole('button', { name: '保存备忘', exact: true })
+          .evaluate((button) => button.scrollIntoView({ block: 'center', behavior: 'instant' }))
+        await expect(page.getByRole('button', { name: '保存备忘', exact: true })).toBeInViewport()
+        await page.screenshot({ path: path.join(folder, `new-memo-${width}-footer.png`) })
+      }
+    }
+    expect(dialogs).toEqual([])
+    expect(writes).toEqual([])
+  })
+}
+
+for (const field of ['标题', '问题', '来源作者']) {
+  test(`card type choices retain unsaved protection for ${field}`, async ({ page }) => {
+    const writes = await fixture(page)
+    await page.goto('/new?kind=knowledge')
+    await page.getByRole('textbox', { name: field, exact: true }).fill('保留的输入')
+    await page.getByRole('button', { name: '观点', exact: true }).click()
+    await page.getByRole('button', { name: '资料卡', exact: true }).click()
+    let confirmation = ''
+    page.once('dialog', async (dialog) => {
+      confirmation = dialog.message()
+      await dialog.dismiss()
+    })
+    await page.getByRole('link', { name: '备忘 / 清单', exact: true }).click()
+    await expect.poll(() => confirmation).toBe('内容尚未保存，确定离开？')
+    await expect(page.getByRole('heading', { name: '新建卡片', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '事实知识', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: field, exact: true })).toHaveValue('保留的输入')
+    page.once('dialog', async (dialog) => {
+      await dialog.accept()
+    })
+    await page.getByRole('link', { name: '备忘 / 清单', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '新建备忘', exact: true })).toBeVisible()
+    expect(writes).toEqual([])
+  })
+}
+
 test('capture fills a blank title but preserves fields cleared during the request', async ({
   page,
 }) => {
