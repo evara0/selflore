@@ -7,6 +7,7 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /cards`、`POST /cards` | 本人摘要分页 / 创建卡片 |
+| `POST /cards/import-preview` | 单卡 JSON 校验与预览，无持久化；由内容决定类别 |
 | `GET /cards/summary` | 活跃知识、观点、资料及备忘数量；待整理与收藏不计备忘 |
 | `POST /sources/resolve` | 公开来源建议，不创建或修改卡片 |
 | `GET/PATCH /cards/{id}` | 完整详情 / 修订编辑 |
@@ -46,6 +47,12 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 今日完成数为本人时区内不同复习单元；积累数为内容卡片。已掌握要求至少一个活跃单元、每个活跃单元均 review 且下次间隔≥21天。学习足迹只计新建、内容更新、复习；收藏、组织、合集操作仅进入最近活动。
 
 完整字段约束可见运行服务的 `/docs` 与 `app/schemas/workspace.py`。表结构和迁移见 [CARD_MIGRATIONS.md](CARD_MIGRATIONS.md)。
+
+## JSON 导入预览
+
+`POST /api/cards/import-preview` 接受 `{"json_text":"一张卡片的 JSON 原文"}`。要求会话 Cookie、受信任 Origin 及 X-CSRF-Token，预览不写业务表或读取外站。最大 1 MiB UTF-8，允许 BOM；仅接受对象，拒绝重复键、非 JSON 常量、未知字段和无效 Unicode。kind、form、memo_format 及内容约束复用 CardContent。省略 taxonomy_mode 时为 unified，清单行缺少 id 时自动生成 UUID，显式无效／重复 ID 会报错。
+
+返回标准化 CardContent，供预览并用于后续 POST /cards；客户端为一次导入生成并保留 client_request_id，创建失败重试沿用同一载荷。标签、附件、稳定引用及清单目标的账号归属和业务可用性仍在保存时核对，结构预览通过不代表跨账号 ID 可用。顶层 owner_id、id、revision、client_request_id 等非内容字段不允许放入导入 JSON。错误为422，业务错误 detail 包含 code=invalid_import 和可定位字段／行列的 message。使用说明及完整三列示例见[JSON 导入](../../handbook/JSON_IMPORT.md)。
 
 ## 备忘与清单
 

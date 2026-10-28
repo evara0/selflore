@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-rou
 import { useIdentity, type Session } from '../lib/workspace'
 import { Icon } from '../components/Common'
 import { legacyList } from '../lib/card-navigation'
+import CreateNavigation from '../features/create/CreateNavigation'
 
 const Cards = lazy(() => import('../features/cards/Cards'))
 const Review = lazy(() => import('../features/knowledge/Review'))
@@ -10,6 +11,7 @@ const Memos = lazy(() => import('../features/cards/Memos'))
 const Collections = lazy(() => import('../features/collections/Collections'))
 const Profile = lazy(() => import('../features/profile/Profile'))
 const Editor = lazy(() => import('../features/cards/Editor'))
+const JsonImport = lazy(() => import('../features/create/JsonImport'))
 const CollectionEditor = lazy(() => import('../features/collections/CollectionEditor'))
 const DetailPage = lazy(() => import('../features/cards/Detail'))
 const Account = lazy(() => import('../features/account/Account'))
@@ -49,7 +51,24 @@ export default function WorkspaceRoutes({ session, logout }: Props) {
         <Route path="/collections/:id/edit" element={protectedPage(<CollectionEditor />)} />
         <Route path="/collections/:id" element={<Collections />} />
         <Route path="/me" element={<Profile />} />
-        <Route path="/new" element={protectedPage(<Editor />)} />
+        <Route
+          path="/new"
+          element={protectedPage(
+            <>
+              <CreateNavigation />
+              <Editor />
+            </>,
+          )}
+        />
+        <Route
+          path="/import"
+          element={protectedPage(
+            <>
+              <CreateNavigation />
+              <JsonImport />
+            </>,
+          )}
+        />
         <Route path="/cards/:id/edit" element={protectedPage(<Editor />)} />
         <Route path="/settings" element={protectedPage(<Account logout={logout} />)} />
         <Route path="/admin/users" element={protectedPage(<AdminUsers />)} />

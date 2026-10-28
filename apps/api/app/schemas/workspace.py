@@ -136,6 +136,10 @@ class CardCreate(CardContent):
     client_request_id: UUID
 
 
+class CardImportPreview(Input):
+    json_text: str = Field(min_length=1, max_length=1024 * 1024)
+
+
 class CardPatch(Input):
     expected_revision: int = Field(ge=1)
     taxonomy_mode: Literal['unified'] | None = None
