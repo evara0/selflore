@@ -92,6 +92,7 @@ openspec/
 | 仓库CI、测试与前端视觉审查 | [自动CI](apps/api/WORKSPACE_TESTING.md#仓库自动-ci) · [本地验证](apps/api/WORKSPACE_TESTING.md) |
 | 图片上传、存储及排查 | [媒体存储](handbook/MEDIA_STORAGE.md) |
 | 资料链接补全、失败回退及平台扩展 | [资料快速收录](handbook/SOURCE_CAPTURE.md) |
+| 从文件或粘贴 JSON 创建卡片 | [JSON 导入](handbook/JSON_IMPORT.md) |
 | 开发库备份与恢复演练 | [备份与隔离恢复](handbook/DATABASE_BACKUP.md) |
 | 日常维护与排障 | [项目维护卡](handbook/MAINTENANCE.md) |
 

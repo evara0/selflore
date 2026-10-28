@@ -492,3 +492,31 @@
   .collection-layout .toolbar .segmented { flex-basis: 100%; }
   .collection-layout .toolbar select { flex: 1 1 120px; min-width: 120px; }
 }
+
+/* Global creation methods and JSON import; independent of card categories. */
+.create-methods{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.create-methods a{padding:9px 14px;font-size:14px;border:1px solid transparent}
+.create-methods a.selected{border-color:currentColor;color:var(--accent)}
+.json-import{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.import-input,.import-preview{padding:clamp(18px,3vw,30px);min-width:0;overflow-wrap:anywhere}
+.json-import h2{margin:0 0 16px;font-size:22px}
+.json-import h4{margin:20px 0 8px}
+.import-input label{display:grid;gap:8px;margin:20px 0 14px}
+.import-input input,.import-input textarea{width:100%;min-width:0;box-sizing:border-box}
+.import-input input[type=file]{padding:10px;font:inherit}
+.import-input textarea{font-family:ui-monospace,Consolas,monospace;font-size:14px;line-height:1.6;resize:vertical}
+.import-input input::file-selector-button{font:inherit;max-width:100%;white-space:normal}
+.import-help{margin-top:24px;line-height:1.8}
+.import-help summary{cursor:pointer;color:var(--accent)}
+.import-title{font-size:23px;line-height:1.5;margin:14px 0 22px}
+.import-items{padding-left:24px;margin:20px 0}
+.import-items>li{padding:16px 0;border-bottom:1px solid var(--border)}
+.import-fields,.import-source{margin:10px 0;display:grid;gap:12px;line-height:1.7}
+.import-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.import-fields dt,.import-source dt{font-size:12px;color:var(--muted)}
+.import-fields dd,.import-source dd{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.import-source{border-top:1px solid var(--border);padding-top:18px}
+.import-actions{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:22px}
+.import-preview h2:focus{outline:2px solid var(--accent);outline-offset:5px}
+@media(max-width:1000px){.json-import{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.import-fields{grid-template-columns:minmax(0,1fr)}.import-input textarea{font-size:16px}.json-import{gap:18px}.create-methods a{font-size:13px}}

@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 
 from app.auth import get_db,get_settings,current_user,Settings,_origin,_csrf
 from app.repositories.workspace import one,many,run,fail
-from app.schemas.workspace import CardCreate,CardPatch,Lifecycle,Revision,TaxonomyCreate,TaxonomyPatch,CollectionCreate,CollectionPatch,Members,Order,RatingInput,ProfilePatch
+from app.schemas.workspace import CardCreate,CardPatch,CardImportPreview,Lifecycle,Revision,TaxonomyCreate,TaxonomyPatch,CollectionCreate,CollectionPatch,Members,Order,RatingInput,ProfilePatch
 from app.services import cards,collections,reviews,profiles,memos,tags as tag_service
+from app.services import card_import
 from app.schemas.workspace import MemoCompletion, MemoOrder
 
 router=APIRouter(prefix='/api')
@@ -44,6 +45,11 @@ def card_list(db:Db,owner:Owner,kind:Literal['knowledge','opinion','reference','
 @router.post('/cards',status_code=201)
 def card_create(body:CardCreate,db:Db,owner:Owner):
     return cards.create_card(db,owner,body)
+
+
+@router.post('/cards/import-preview')
+def card_import_preview(body:CardImportPreview,owner:Owner):
+    return card_import.preview(body.json_text)
 
 
 @router.get('/cards/summary')
