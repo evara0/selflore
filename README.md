@@ -57,7 +57,7 @@ SelfLore 是一个个人卡片笔记应用，用来收纳外部资料、整理�
 
 3. 打开 [http://127.0.0.1:24566](http://127.0.0.1:24566)，按 `Ctrl+C` 停止。
 
-启动脚本会同步锁定依赖、构建前端并由 API 提供页面；**不会安装 PostgreSQL 或自动迁移数据库**。图片上传还需按[图片存储说明](MEDIA_STORAGE.md)初始化媒体目录。详细配置与排障见[本地启动说明](LOCAL_START.md)。
+启动脚本会同步锁定依赖、构建前端并由 API 提供页面；**不会安装 PostgreSQL 或自动迁移数据库**。图片上传还需按[图片存储说明](handbook/MEDIA_STORAGE.md)初始化媒体目录。详细配置与排障见[本地启动说明](handbook/LOCAL_START.md)。
 
 需要前端热更新时，按 [API 配置与运行](apps/api/AUTH_CONFIGURATION.md)启动后端，再在 `apps/web` 执行 `pnpm install --frozen-lockfile`、`pnpm dev`，访问 `http://127.0.0.1:24567`。其他环境可参考通用数据库与 API 配置说明；一键脚本依赖 Windows。
 
@@ -69,6 +69,7 @@ apps/
   api/                FastAPI 后端：app、migrations、tests
 scripts/              本地启动、备份、媒体诊断及CI辅助脚本
 assets/screenshots/   README使用的公开演示截图及来源说明
+handbook/             公开操作手册：启动、维护、备份、媒体与资料收录
 openspec/
   specs/              当前能力规格
   changes/            活跃变更与 archive 历史记录
@@ -80,19 +81,20 @@ openspec/
 
 ## 详细说明
 
-产品功能与技术概览统一维护在本页；专项文档只负责对应操作，历史验收保留在 OpenSpec 变更记录中。
+产品功能与技术概览统一维护在本页；专项操作手册集中在 `handbook/`，应用开发说明保留在各自目录，历史验收保留在 OpenSpec 变更记录中。根目录的 `CONTRIBUTING.md` 和 `AGENTS.md` 分别说明贡献流程与代理工作约定。
 
 | 需要了解 | 文档 |
 | --- | --- |
-| 本地启动与诊断 | [LOCAL_START.md](LOCAL_START.md) |
+| 本地启动与诊断 | [Windows 本地启动](handbook/LOCAL_START.md) |
 | 数据库首次准备与后续迁移 | [数据库初始化](apps/api/DATABASE_SETUP.md) · [迁移说明](apps/api/CARD_MIGRATIONS.md) |
 | 认证配置、首位管理员及手动运行 | [认证配置](apps/api/AUTH_CONFIGURATION.md) |
 | 接口与数据交互 | [工作区 API](apps/api/WORKSPACE_API.md) |
 | 仓库CI、测试与前端视觉审查 | [自动CI](apps/api/WORKSPACE_TESTING.md#仓库自动-ci) · [本地验证](apps/api/WORKSPACE_TESTING.md) |
-| 图片上传、存储及排查 | [MEDIA_STORAGE.md](MEDIA_STORAGE.md) |
-| 资料链接补全、失败回退及平台扩展 | [SOURCE_CAPTURE.md](SOURCE_CAPTURE.md) |
-| 开发库备份与恢复演练 | [DATABASE_BACKUP.md](DATABASE_BACKUP.md) |
-| 日常维护与排障 | [MAINTENANCE.md](MAINTENANCE.md) |
+| 图片上传、存储及排查 | [媒体存储](handbook/MEDIA_STORAGE.md) |
+| 资料链接补全、失败回退及平台扩展 | [资料快速收录](handbook/SOURCE_CAPTURE.md) |
+| 从文件或粘贴 JSON 创建卡片 | [JSON 导入](handbook/JSON_IMPORT.md) |
+| 开发库备份与恢复演练 | [备份与隔离恢复](handbook/DATABASE_BACKUP.md) |
+| 日常维护与排障 | [项目维护卡](handbook/MAINTENANCE.md) |
 
 ## 参与贡献
 

@@ -22,7 +22,7 @@ pnpm lint
 pnpm build
 ```
 
-`pnpm build` 先执行 TypeScript 构建检查，再输出 `dist/`。由 API 提供构建页面时，需要启动或重启 API；固定 Windows 一键启动见[本地启动](../../LOCAL_START.md)。
+`pnpm build` 先执行 TypeScript 构建检查，再输出 `dist/`。由 API 提供构建页面时，需要启动或重启 API；固定 Windows 一键启动见[本地启动](../../handbook/LOCAL_START.md)。
 
 `pnpm format`使用锁定的Prettier统一`src`下TypeScript／TSX及前端根TS配置；`pnpm format:check`只检查、不写文件，仓库CI也执行此项。配置采用100列、单引号、无分号和LF，仓库的限定Git属性确保这些文件在Windows也检出为LF。Oxlint继续负责代码规则。CSS与浏览器测试不纳入本次格式整理。
 

@@ -145,6 +145,10 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 24568 --no-access-log
 
 ### 仅前端替身回归
 
+`apps/web/e2e/json-import.spec.ts` 覆盖全局 JSON 导入。先在 `apps/api` 用 `uv sync --frozen` 准备 API 测试依赖，再按本节启动已构建的前端预览。执行 `pnpm exec playwright test e2e/json-import.spec.ts` 时，用例自行启动和关闭只监听127.0.0.1随机端口的 `tests/import_preview_server.py`；默认使用 `apps/api/.venv` 中的 Python，可用 `SELFLORE_API_PYTHON` 指定等价的冻结依赖解释器。夹具覆盖合成登录身份、清空继承的应用DSN，并禁止业务数据库访问；预览使用真实解析服务，最终创建请求留在浏览器测试内存中。
+
+该回归覆盖三种视口的文件／粘贴、完整三列清单、失败幂等重试、六种形式、预览失效、离开保护、登录门禁、文件大小和UTF-8编码。截图写入 SELFLORE_CAPTURE_DIR 或用例visual目录，仍需实际打开查看；后端预览契约另由 `tests/test_card_import.py` 验证。此项不替代真实账号／数据库创建链路。
+
 `apps/web/e2e/editor-boundaries.spec.ts`验证注册登录与退出、资料来源字段与重试、合集创建，以及快速收录的手改保留、回退、失败后保存与320／390／1280布局。请求由测试内存替身处理，不需要业务数据库，也不能替代真实接口闭环。来源端点鉴权、网络安全和解析测试为`apps/api/tests/test_source_capture.py`；真实外站成功率须单独实测。
 
 先按前端说明构建，在`apps/web`的专用终端运行`pnpm exec vite preview --host 127.0.0.1 --port 24569 --strictPort`；在同目录的另一个终端运行：

@@ -74,6 +74,7 @@ test('guest reader resets revealed answers and navigation follows stable opinion
 
 test.each([
   '/new',
+  '/import',
   '/knowledge/review',
   '/settings',
   '/admin/users',

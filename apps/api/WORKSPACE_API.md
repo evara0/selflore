@@ -7,6 +7,7 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /cards`、`POST /cards` | 本人摘要分页 / 创建卡片 |
+| `POST /cards/import-preview` | 单卡 JSON 校验与预览，无持久化；由内容决定类别 |
 | `GET /cards/summary` | 活跃知识、观点、资料及备忘数量；待整理与收藏不计备忘 |
 | `POST /sources/resolve` | 公开来源建议，不创建或修改卡片 |
 | `GET/PATCH /cards/{id}` | 完整详情 / 修订编辑 |
@@ -47,6 +48,12 @@ profile 支持 display_name / bio / avatar_color（sage/clay/ink）/ interests /
 
 完整字段约束可见运行服务的 `/docs` 与 `app/schemas/workspace.py`。表结构和迁移见 [CARD_MIGRATIONS.md](CARD_MIGRATIONS.md)。
 
+## JSON 导入预览
+
+`POST /api/cards/import-preview` 接受 `{"json_text":"一张卡片的 JSON 原文"}`。要求会话 Cookie、受信任 Origin 及 X-CSRF-Token，预览不写业务表或读取外站。最大 1 MiB UTF-8，允许 BOM；仅接受对象，拒绝重复键、非 JSON 常量、未知字段和无效 Unicode。kind、form、memo_format 及内容约束复用 CardContent。省略 taxonomy_mode 时为 unified，清单行缺少 id 时自动生成 UUID，显式无效／重复 ID 会报错。
+
+返回标准化 CardContent，供预览并用于后续 POST /cards；客户端为一次导入生成并保留 client_request_id，创建失败重试沿用同一载荷。标签、附件、稳定引用及清单目标的账号归属和业务可用性仍在保存时核对，结构预览通过不代表跨账号 ID 可用。顶层 owner_id、id、revision、client_request_id 等非内容字段不允许放入导入 JSON。错误为422，业务错误 detail 包含 code=invalid_import 和可定位字段／行列的 message。使用说明及完整三列示例见[JSON 导入](../../handbook/JSON_IMPORT.md)。
+
 ## 备忘与清单
 
 kind=memo、form=null，memo_format为note或checklist，创建后不可变。标题必填，正文body_md可空；note只需标题，checklist需要1–200个memo_items。条目输入为id（客户端生成的稳定UUID）、text（去空白后1–2000字符）、extra_values（固定两个可空文本，各最多2000字符）、is_completed、target_ids（最多20个本人卡片；新增仅限事实知识，同一行已有其他类型关系可保留）。顺序由输入数组决定。备忘不能包含附件、分类或知识问答字段；标签和来源可选。
@@ -84,7 +91,7 @@ PATCH /api/cards/{id}带expected_revision；省略memo_items保留原条目，�
 
 `POST /api/sources/resolve`，请求`{"url":"https://example.com/article","mode":"auto"}`；mode为auto（默认）或webpage（强制普通网页）。要求会话、受信任Origin及CSRF，单账号进程内10次/分钟，并发受限返回429；非法／不安全输入422。
 
-响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../SOURCE_CAPTURE.md)。
+响应包含category(webpage/x)、method(webpage/x_oembed)、status(success/partial/unavailable)、fallback_reason（无回退为null）、fields。fields只含提取到的source_title、source_author、source_publisher、source_platform、source_published_on。success表示有标题和作者，不表示所有来源字段齐全。外站失败以200和unavailable及安全error代码返回，不泄露响应或内部地址；X专用失败会先回退普通网页。该操作不写卡片、不下载图片；边界与限制见[快速收录说明](../../handbook/SOURCE_CAPTURE.md)。
 
 
 ## 统一标签与兼容协议（0007）

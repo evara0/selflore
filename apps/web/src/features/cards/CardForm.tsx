@@ -196,7 +196,6 @@ function CardFormEditor({
               : (k) => {
                   setKind(k)
                   setTopics([])
-                  setDirty(true)
                 }
           }
         />
