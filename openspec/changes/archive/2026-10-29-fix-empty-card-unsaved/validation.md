@@ -52,3 +52,17 @@
 2026-10-27，用户授权提交、合并、推送并回收 worktree。main 已先交付文档整理提交 5263012，fetch 后与 origin/main 为 0 / 0；该文档提交不影响修复涉及的产品代码和测试。交付前复核本变更源码、浏览器用例、全部任务及上述验收记录，OpenSpec 严格验证和 diff 检查通过。沿用已通过的 81 项组件测试、6 项定向浏览器测试及九张实际查看截图，不将其表述为完整浏览器套件或后端验证。
 
 先将本 worktree 的 .cache 完整保留到主工作区的 .cache/recovered-worktrees/fix-empty-card-unsaved，并逐文件校验一致；依赖与 dist 为可重新生成产物。修复提交后合并 main，核对合并结果只增加修复、测试及本变更记录；推送成功后移除已干净且已合并的普通 worktree。Git 提交、合并和远端结果以最终交付输出为准。此次不操作生产发布。
+
+## 2026-10-29 归档前复核
+
+- 代码基线：main，37cc76d55144e9f1837fb4e51a1dba8d70e6d32b；本轮只更新主规范及归档记录，没有修改产品源码、样式、测试或依赖。
+- 规划：proposal、specs、design、tasks 均为 done，5 项任务全部完成。
+- 自动测试：当前合并代码 pnpm test 通过（12 个文件、89 项）；pnpm format:check、pnpm lint、pnpm build 均通过；定向 Playwright 回归 e2e/editor-boundaries.spec.ts --grep 'card type choices' 6 项通过。
+- OpenSpec：归档前变更严格校验通过；主规范严格校验 32 项通过。card-workspace 同步新增要求“空白新卡片类型选择不触发离开保护”及两个场景，逐字核对同步完整，保留其他要求。
+- 浏览器：Playwright 使用 channel=chrome；当前构建由本机 127.0.0.1:24569 提供，内存 API 替身和合成账号，不连接业务库。
+- 截图生成：G:/selflore/.cache/frontend-visual-review/2026-10-29-fix-empty-card-unsaved-archive/，三个视口分别为 320×844、390×844、1280×844。
+- 截图实际查看：new-card-320-blank.png、new-memo-320-blank.png、new-memo-320-footer.png；new-card-390-blank.png、new-memo-390-blank.png、new-memo-390-footer.png；new-card-1280-blank.png、new-memo-1280-blank.png、new-memo-1280-footer.png，共 9 张均通过图像工具逐张实际查看。
+- 视觉结论：所查空白资料卡、普通备忘首屏和保存区域文字可读、控件对齐，320 宽度类型选项正常换行；滚动后的保存按钮完整可达，没有本轮范围内待处理视觉问题。未修改产品展示代码，无需修复复测。
+- 交互：三种宽度的空白跨类型及重复点击不触发离开确认，键盘 Enter 可进入备忘；标题、问题和来源作者实际输入后，取消离开保留内容，确认离开进入备忘。
+- 未覆盖：真实手机键盘及安全区、其他浏览器、侧栏最末端、完整浏览器套件、后端及生产环境；不宣称全站视觉或完整系统验证通过。
+- 用户已明确授权验证、同步及归档；本轮未自动提交或推送归档文件。
